@@ -1,59 +1,92 @@
 #include "SpaceShip.h"
 
 #include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <ostream>
 
+#include "Explosion.h"
+#include "Game.h"
 #include "Laser.h"
 
 namespace SpaceInvaders {
 SpaceShip::SpaceShip() {
-    m_texture = LoadTexture("Graphics/spaceship.png");
-    m_position = { static_cast<float>(GetScreenWidth() - m_texture.width) / 2.0f, // X
-                   static_cast<float>(GetScreenHeight()) - static_cast<float>(m_texture.height) }; // Y
-}
+    const auto texture = Game::GameResources->GetTexture("spaceship.png");
+    assert(texture.has_value());
+    m_textures.push_back(texture.value());
 
-SpaceShip::~SpaceShip() {
-    UnloadTexture(m_texture);
+    m_position = { static_cast<float>(GetScreenWidth() - Entity::GetTexture().width) / 2.0f, // X
+                   static_cast<float>(GetScreenHeight()) - static_cast<float>(Entity::GetTexture().height) - 100 }; // Y
 }
 
 void
 SpaceShip::Update() {
-    std::ranges::for_each(m_lasers, [](auto &laser) { laser.Update(Laser::PlayerLaserSpeed); });
     std::erase_if(m_lasers, [](auto& laser) {
         return laser.ShouldRemove();
     });
+
+    std::ranges::for_each(m_lasers, [](auto &laser) { laser.Update(); });
+
+    if (!m_active)
+        return;
+
+    if (IsKeyDown(KEY_LEFT))
+        MoveLeft();
+    else if (IsKeyDown(KEY_RIGHT))
+        MoveRight();
+    else if (IsKeyDown(KEY_SPACE))
+        FireLaser();
 }
 
 void
-SpaceShip::Draw() const {
-    DrawTextureV(m_texture, m_position, WHITE);
-    std::ranges::for_each(m_lasers, [](auto &laser) { laser.Draw(); });
+SpaceShip::Draw() {
+    if (m_active) {
+        DrawTextureV(GetTexture(), m_position, WHITE);
+        std::ranges::for_each(m_lasers, [](auto &laser) { laser.Draw(); });
+    }
 }
 
 void
 SpaceShip::MoveLeft() {
-    m_position.x -= GetFrameTime() * PlayerSpeed;
-    if (m_position.x < 0) { m_position.x = 0; }
+    m_position.x -= GetFrameTime() * Speed;
+    if (m_position.x < Game::ScreenPadding / 2.0f) { m_position.x = Game::ScreenPadding / 2.0f; }
 }
 
 void
 SpaceShip::MoveRight() {
-    m_position.x += GetFrameTime() * PlayerSpeed;
-    if (m_position.x > static_cast<float>(GetScreenWidth()) - static_cast<float>(m_texture.width)) {
-        m_position.x = static_cast<float>(GetScreenHeight()) - static_cast<float>(m_texture.width);
+    m_position.x += GetFrameTime() * Speed;
+    if (m_position.x > GetScreenWidth() - GetTexture().width - Game::ScreenPadding / 2.0f) {
+        m_position.x = GetScreenWidth() - GetTexture().width - Game::ScreenPadding / 2.0f;
     }
+}
+
+void
+SpaceShip::Explode() {
+    m_active = false;
+
+    auto e = std::make_unique<Explosion>(Explosion::Type::Alien, Vector2 {0, 0});
+    const float xOff = m_position.x + GetTexture().width / 2 - e->GetTexture().width / 2;
+    const float yOff = m_position.y + GetTexture().height / 2 - e->GetTexture().height / 2;
+    e->Position({xOff, yOff});
+
+    Game::AddExplosion(e);
+
+    // TODO: Repawn the player after a short delay in the center of the screen with invulnerability
 }
 
 void
 SpaceShip::FireLaser() {
     const auto time = GetTime();
-    if (time - m_lastFireTime < PlayerFireSpeed || m_lasers.size() >= MaxLasers)
+    if (time - m_lastFireTime < FireSpeed || m_lasers.size() >= MaxLasers)
         return;
 
     m_lastFireTime = time;
-    m_lasers.emplace_back(Vector2{
-            m_position.x + (static_cast<float>(m_texture.width) / 2.0f) - (DefaultLaserWidth / 2.0f),
-            m_position.y + 1}
+    Laser l;
+    l.Position({
+        m_position.x + GetTexture().width / 2.0f - l.GetTexture().width / 2.0f,
+        m_position.y}
     );
+    m_lasers.push_back(l);
 }
 
 }

@@ -1,37 +1,37 @@
 #pragma once
-#include <cstdint>
-
 #include <raylib.h>
+
+#include "Entity.h"
 
 namespace SpaceInvaders {
 
-constexpr uint8_t DefaultLaserWidth = 4;
-constexpr uint8_t DefaultLaserLength = 15;
-
-constexpr double ExplosionLingerTime = 0.50f;
-
-class Laser {
+class Laser : public Entity{
 public:
-    static constexpr float PlayerLaserSpeed = 420.0f;
-    static constexpr float AlienLaserSpeed = -420.0f;
+    static constexpr float Speed = -420.0f;
 
-    explicit Laser(Vector2 position);
-    ~Laser() = default;
+    Laser();
+    ~Laser() override = default;
 
-    void Update(const float speed);
-    void Draw() const;
+    void Update() override;
+    void Draw() override;
+    void Explode(bool createExplosion = true);
 
-    [[nodiscard]] Vector2 GetPosition() const { return m_position; }
-    [[nodiscard]] bool ShouldRemove();
-
-    static void UnloadTexture();
+    void Position(const Vector2 &position) { m_position = position; }
+    [[nodiscard]] bool ShouldRemove() const;
 
 private:
-    double m_explodeTime {0};
-    double m_explosionLingerTime {ExplosionLingerTime};
-    uint8_t m_frame {0};
+    float m_speed {Speed};
+    bool m_active {true};
     Vector2 m_position {0, 0};
-    inline static Texture2D m_explodedtexture {};
+};
+
+class AlienLaser final : public Laser {
+public:
+    static constexpr float Speed = 420.0f;
+    AlienLaser();
+
+private:
+    float m_speed {Speed};
 };
 
 }

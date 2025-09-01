@@ -1,57 +1,67 @@
 #include "Laser.h"
 
+#include <cassert>
 #include <iostream>
+#include <ranges>
 
 #include "Colors.h"
+#include "Explosion.h"
+#include "Game.h"
 
 namespace SpaceInvaders {
 
-Laser::Laser(const Vector2 position) : m_position(position) {
-    if (m_explodedtexture.id == 0) {
-        m_explodedtexture = LoadTexture("Graphics/explosion.png");
+AlienLaser::AlienLaser() {
+    for (const auto i : std::views::iota(1, 2)) {
+        auto texture = Game::GameResources->GetTexture(std::format("alien_laser_{}_{}.png", std::to_string(i), i));
+        assert(texture.has_value());
+        m_textures.push_back(texture.value());
     }
+
+    const auto sound = Game::GameResources->GetSound("laser.ogg");
+    assert(sound.has_value());
+    m_sounds.push_back(sound.value());
+
+    PlaySound(Entity::GetNextSound());
+}
+
+Laser::Laser() {
+    const auto texture = Game::GameResources->GetTexture("player_laser_1.png");
+    assert(texture.has_value());
+    m_textures.push_back(texture.value());
+
+    const auto sound = Game::GameResources->GetSound("laser.ogg");
+    assert(sound.has_value());
+    m_sounds.push_back(sound.value());
+
+    PlaySound(Entity::GetNextSound());
 }
 
 void
-Laser::Update(const float speed) {
-    if (m_explodeTime != 0.0f) return;
-    m_position.y -= speed * GetFrameTime();
+Laser::Update() {
+    if (m_position.y < 0 || m_position.y - GetTexture().width > GetScreenHeight()) {
+        Explode();
+        return;
+    }
+    m_position.y += m_speed * GetFrameTime();
+}
 
+void
+Laser::Draw() {
+    const auto tex = GetNextTexture();
+    DrawTextureV(tex, m_position, WHITE);
+}
+
+void
+Laser::Explode(const bool createExplosion) {
+    m_active = false;
+    if (!createExplosion) { return; }
+
+    auto e = std::make_unique<Explosion>(Explosion::Type::Laser, m_position);
+    Game::AddExplosion(e);
 }
 
 bool
-Laser::ShouldRemove() {
-    if (m_position.y < 0 || m_position.y - DefaultLaserLength > static_cast<float>(GetScreenHeight())) {
-        if (m_explodeTime == 0.0f) { m_explodeTime = GetTime(); }
-        return GetTime() - m_explodeTime > m_explosionLingerTime;
-    }
-
-    return false;
+Laser::ShouldRemove() const {
+    return !m_active;
 }
-
-void
-Laser::UnloadTexture() {
-    if (m_explodedtexture.id != 0) {
-        ::UnloadTexture(m_explodedtexture);
-    }
-}
-
-void
-Laser::Draw() const {
-    if (m_explodeTime != 0.0f) {
-        DrawTexture(
-            m_explodedtexture,
-            m_position.x - m_explodedtexture.width / 2,
-            m_position.y <= 0 ? m_position.y : m_position.y - m_explodedtexture.height - DefaultLaserLength, WHITE);
-        return;
-    }
-    DrawRectangle(
-        static_cast<int32_t>(m_position.x), // X
-        static_cast<int32_t>(m_position.y), // Y
-        DefaultLaserWidth, // Width
-        DefaultLaserLength, // Height
-        Colors::Yellow // Color
-    );
-}
-
 }

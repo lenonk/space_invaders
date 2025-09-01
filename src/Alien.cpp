@@ -5,31 +5,40 @@
 #include "Alien.h"
 
 #include <cassert>
-#include <iostream>
-#include <ostream>
+#include <numeric>
 #include <ranges>
 
+#include "Explosion.h"
+#include "Game.h"
+
 namespace SpaceInvaders {
-Alien::Alien(const Vector2 position, const uint8_t type) : m_type(type), m_position(position) {
-    m_texture = LoadTexture(type);
+Alien::Alien(const Vector2 position, const uint8_t type) {
+    m_type = type;
+    m_position = position;
+
+    for (const auto i : std::views::iota(1, 2)) {
+        auto texture = Game::GameResources->GetTexture(std::format("alien_{}_{}.png", std::to_string(type), i));
+        assert(texture.has_value());
+        m_textures.push_back(texture.value());
+    }
 }
 
 void
-Alien::Draw() const {
-    DrawTextureV(m_texture[m_frame], m_position, WHITE);
+Alien::Draw() {
+    if (!Active()) { return; }
+
+    DrawTextureV(GetNextTexture(), m_position, WHITE);
     std::ranges::for_each(m_lasers, [](auto &laser) { laser.Draw(); });
 }
 
 void
 Alien::Update() {
-    const auto time = GetTime();
-    if (time - m_lastMoveTime > MoveTime) {
-        Move(Vector2{ m_position.x + Speed * m_direction, m_position.y });
-        m_frame = (m_frame + 1) % 2;
+    if (const auto time = GetTime(); time - m_lastMoveTime > m_moveTime) {
+        Move(Vector2{ m_position.x + m_speed, m_position.y });
         m_lastMoveTime = time;
     }
 
-    std::ranges::for_each(m_lasers, [](auto &laser) { laser.Update(Laser::AlienLaserSpeed); });
+    std::ranges::for_each(m_lasers, [](auto &laser) { laser.Update(); });
     std::erase_if(m_lasers, [](auto& laser) { return laser.ShouldRemove(); });
 }
 
@@ -48,29 +57,32 @@ Alien::FireLaser() {
     }
 
     m_lastFireTime = time;
-    m_lasers.emplace_back(Vector2{
-            m_position.x + (static_cast<float>(m_texture[m_frame].width) / 2.0f) - (DefaultLaserWidth / 2.0f),
-            m_position.y + m_texture[m_frame].height + 1}
+    AlienLaser l;
+    l.Position({
+        m_position.x + (static_cast<float>(GetTexture().width) / 2.0f) - (l.GetTexture().width / 2.0f),
+        m_position.y + GetTexture().height}
     );
-}
 
-std::array<Texture2D, 2> &
-Alien::LoadTexture(const uint8_t type) {
-    const uint8_t type_idx = type - 1;
-    if (m_textures[type_idx][0].id == 0) {
-        m_textures[type_idx][0] = ::LoadTexture(std::format("Graphics/alien_{}_ani_1.png", std::to_string(type)).c_str());
-        m_textures[type_idx][1] = ::LoadTexture(std::format("Graphics/alien_{}_ani_2.png", std::to_string(type)).c_str());
-    }
-
-    return m_textures[type_idx];
+    m_lasers.push_back(l);
 }
 
 void
-Alien::UnloadTextures() {
-    std::ranges::for_each(m_textures, [](auto &texture) {
-        if (texture[0].id != 0) { UnloadTexture(texture[0]); }
-        if (texture[1].id != 0) { UnloadTexture(texture[1]); }
-    });
+Alien::Explode() {
+    m_active = false;
+    auto e = std::make_unique<Explosion>(Explosion::Type::Alien, Vector2{0, 0});
+
+    const float xOff = m_position.x + GetTexture().width / 2 - e->GetTexture().width / 2;
+    const float yOff = m_position.y + GetTexture().height / 2 - e->GetTexture().height / 2;
+
+    e->Position({xOff, yOff});
+    Game::AddExplosion(e);
+}
+
+void
+Alien::StepUpSpeed() {
+    if (m_moveTime > 0.05f) {
+        m_moveTime -= 0.05f;
+    }
 }
 
 }

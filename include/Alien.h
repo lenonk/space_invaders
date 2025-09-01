@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <vector>
 #include <cstdint>
 
@@ -10,51 +9,47 @@
 
 namespace SpaceInvaders {
 
-class Alien {
+class Alien final : public Entity {
 public:
-    enum Direction : int8_t {
-        Left = -1,
-        Right = 1,
-    };
-
-    static constexpr uint8_t NumTextures { 3 };
-    static constexpr float MoveTime = 0.75f;
-    static constexpr float Speed = 10.0f;
+    static constexpr uint8_t AlienTypes { 3 };
+    static constexpr float AlienSpeed = 10.0f;
     static constexpr float AlienMinFireSpeed = 750.0f;
     static constexpr float AlienMaxFireSpeed = 5000.0f;
 
     Alien(Vector2 position, uint8_t type);
+    // TODO: Check if we still need these
     Alien(const Alien &other) = default;
     Alien &operator=(const Alien &other) = default;
     Alien() = default;
-    ~Alien() = default;
+    ~Alien() override = default;
 
-    void Draw() const;
-    void Update();
+    void Draw() override;
+    void Update() override;
     void Move(const Vector2 &position);
     void FireLaser();
+    void Explode();
 
-    static std::array<Texture2D, 2> &LoadTexture(uint8_t type);
-    static void UnloadTextures();
+    static void StepUpSpeed();
 
-    [[nodiscard]] Vector2 Position() const { return m_position; }
-    [[nodiscard]] Texture2D &Texture() { return m_texture[m_frame]; }
+    [[nodiscard]] float GetSpeed() const { return m_speed; }
+    [[nodiscard]] bool Active() const { return m_active; }
+    [[nodiscard]] float Speed() const { return m_speed; }
     [[nodiscard]] uint8_t Type() const { return m_type; }
-    [[nodiscard]] static int8_t Direction() { return m_direction; }
+    [[nodiscard]] std::vector<AlienLaser> &GetLasers() { return m_lasers; }
 
-    static auto Direction(const int8_t dir) { m_direction = dir; }
+    void SetSpeed(const float speed) { m_speed = speed; }
+
 private:
+    bool m_active           {true};
     uint8_t m_type          {0};
-    double m_lastMoveTime   {0};
-    Vector2 m_position      {0, 0};
+    float m_speed           {AlienSpeed};
+    double m_lastMoveTime   {0.0f};
 
-    std::vector<Laser> m_lasers            {};
-    std::array<Texture2D, 2> m_texture     {};
+    std::vector<AlienLaser> m_lasers    {};
 
-    inline static int8_t m_direction      {Right};
-    inline static int8_t m_frame          {0};
-    inline static double m_lastFireTime   {0};
-    inline static std::array<std::array<Texture2D, 2>, NumTextures> m_textures {};
+    inline static double m_lastFireTime {0};
+    inline static float m_moveTime = 0.75f;
+
 };
 
 }

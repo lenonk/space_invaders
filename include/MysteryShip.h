@@ -1,30 +1,29 @@
 #pragma once
-#include <cstdint>
-#include <raylib.h>
+
+#include "Entity.h"
 
 namespace SpaceInvaders {
 
-class MysteryShip {
+class MysteryShip : public Entity {
 public:
     static constexpr float Speed = 150.0f;
+    static constexpr float yVal = 50.0f;
     static constexpr double SpawnInterval = 25.0f;
 
     MysteryShip();
-    ~MysteryShip();
+    ~MysteryShip() override = default;
 
     void CheckSpawn();
-    void Update();
-    void Draw() const;
+    void Update() override;
+    void Draw() override;
+    void Explode();
 
 private:
-    bool spawned {false};
+    bool m_spawned {false};
     int8_t m_direction {1};
     float m_speed {Speed};
-    Vector2 m_position {0, 50};
     double m_lastSpawnTime {0};
     double nextSpawnTime {0};
-
-    Texture2D m_texture {};
 };
 
 }

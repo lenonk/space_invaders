@@ -1,34 +1,34 @@
 #pragma once
-#include <memory>
-#include <raylib.h>
 #include <vector>
 
+#include "Entity.h"
 #include "Laser.h"
 
 namespace SpaceInvaders {
 
-constexpr float PlayerSpeed = 420.0f;
-constexpr float PlayerFireSpeed = 0.2f;
-constexpr uint8_t MaxLasers = 5;
-
-class SpaceShip {
+class SpaceShip final : public Entity {
 public:
+    static constexpr float Speed = 420.0f;
+    static constexpr float FireSpeed = 0.2f;
+    static constexpr uint8_t MaxLasers = 3;
+
     SpaceShip();
-    ~SpaceShip();
+    ~SpaceShip() override = default;
 
-    void Update();
-    void Draw() const;
+    void Update() override;
+    void Draw() override;
 
+    void FireLaser();
     void MoveLeft();
     void MoveRight();
 
-    void FireLaser();
+    void Explode();
+
+    [[nodiscard]] std::vector<Laser> &GetLasers() { return m_lasers; }
 
 private:
+    bool m_active {true};
     double m_lastFireTime {0};
-
-    Texture2D m_texture {};
-    Vector2 m_position {0, 0};
 
     std::vector<Laser> m_lasers {};
 };

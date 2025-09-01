@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 4.1)
 project(space_invaders)
 
 set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=-cppcoreguidelines-narrowing-conversions")
 
 # Release build optimizations
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -16,6 +17,10 @@ set(HDRS
         include/Barrier.h
         include/Alien.h
         include/MysteryShip.h
+        include/Explosion.h
+        include/CellRect.h
+        include/Entity.h
+        include/ResourceManager.h
 )
 
 set(SRCS
@@ -26,6 +31,10 @@ set(SRCS
         src/Barrier.cpp
         src/Alien.cpp
         src/MysteryShip.cpp
+        src/Explosion.cpp
+        src/Entity.cpp
+        src/ResourceManager.cpp
+        src/CellRect.cpp
 )
 
 add_executable(space_invaders ${SRCS})
