@@ -14,13 +14,9 @@ public:
 
     void Draw() override;
 
-    [[nodiscard]] bool GetActive() const;
-    [[nodiscard]] Rectangle GetRect() override;
-
-    void SetActive(const bool active);
+    [[nodiscard]] Rectangle GetRect() const override;
 
 private:
-    bool m_active {true};
 };
 
 }

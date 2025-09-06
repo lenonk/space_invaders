@@ -15,20 +15,25 @@ SpaceShip::SpaceShip() {
     assert(texture.has_value());
     m_textures.push_back(texture.value());
 
-    m_position = { static_cast<float>(GetScreenWidth() - Entity::GetTexture().width) / 2.0f, // X
-                   static_cast<float>(GetScreenHeight()) - static_cast<float>(Entity::GetTexture().height) - 100 }; // Y
+    Reset();
 }
 
 void
 SpaceShip::Update() {
-    std::erase_if(m_lasers, [](auto& laser) {
-        return laser.ShouldRemove();
-    });
-
+    std::erase_if(m_lasers, [](auto &laser) { return !laser.GetActive(); });
     std::ranges::for_each(m_lasers, [](auto &laser) { laser.Update(); });
 
-    if (!m_active)
+    if (!m_active) {
+        if (m_respawnTimer > 0 && GetTime() - m_respawnTimer > RespawnTime) {
+            m_respawnTimer = 0;
+            Reset();
+        }
         return;
+    }
+
+    if (m_invulnerable && GetTime() - m_invulnerableTimer > InvulnerableTime) {
+        m_invulnerable = false;
+    }
 
     if (IsKeyDown(KEY_LEFT))
         MoveLeft();
@@ -40,10 +45,19 @@ SpaceShip::Update() {
 
 void
 SpaceShip::Draw() {
-    if (m_active) {
+    if (!m_active) { return; }
+    std::ranges::for_each(m_lasers, [](auto &laser) { laser.Draw(); });
+    if (Game::GamePaused() || !m_invulnerable || (int64_t)(GetTime() * 10) % 2 == 0)
         DrawTextureV(GetTexture(), m_position, WHITE);
-        std::ranges::for_each(m_lasers, [](auto &laser) { laser.Draw(); });
-    }
+}
+
+void
+SpaceShip::Reset() {
+    m_position = { (GetScreenWidth() - Entity::GetTexture().width) / 2.0f, // X
+                   Game::GroundLevel - Entity::GetTexture().height - 2 };    // Y
+    m_active = true;
+    m_invulnerable = true;
+    m_invulnerableTimer = GetTime();
 }
 
 void
@@ -60,18 +74,22 @@ SpaceShip::MoveRight() {
     }
 }
 
-void
-SpaceShip::Explode() {
+bool
+SpaceShip::Die() {
+    if (m_invulnerable) { return false; }
     m_active = false;
 
-    auto e = std::make_unique<Explosion>(Explosion::Type::Alien, Vector2 {0, 0});
-    const float xOff = m_position.x + GetTexture().width / 2 - e->GetTexture().width / 2;
-    const float yOff = m_position.y + GetTexture().height / 2 - e->GetTexture().height / 2;
-    e->Position({xOff, yOff});
+    Explosion e(Explosion::Type::Alien, Vector2 {0, 0});
+    const float xOff = m_position.x + GetTexture().width / 2 - e.GetTexture().width / 2;
+    const float yOff = m_position.y + GetTexture().height / 2 - e.GetTexture().height / 2;
+    e.SetPosition({xOff, yOff});
 
     Game::AddExplosion(e);
 
-    // TODO: Repawn the player after a short delay in the center of the screen with invulnerability
+    m_respawnTimer = GetTime();
+    m_invulnerable = true;
+
+    return true;
 }
 
 void
@@ -81,8 +99,8 @@ SpaceShip::FireLaser() {
         return;
 
     m_lastFireTime = time;
-    Laser l;
-    l.Position({
+    Laser l(Laser::Type::Player);
+    l.SetPosition({
         m_position.x + GetTexture().width / 2.0f - l.GetTexture().width / 2.0f,
         m_position.y}
     );

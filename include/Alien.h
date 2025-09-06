@@ -26,30 +26,23 @@ public:
     void Draw() override;
     void Update() override;
     void Move(const Vector2 &position);
-    void FireLaser();
+    void FireLaser() const;
     void Explode();
 
     static void StepUpSpeed();
 
     [[nodiscard]] float GetSpeed() const { return m_speed; }
-    [[nodiscard]] bool Active() const { return m_active; }
-    [[nodiscard]] float Speed() const { return m_speed; }
-    [[nodiscard]] uint8_t Type() const { return m_type; }
-    [[nodiscard]] std::vector<AlienLaser> &GetLasers() { return m_lasers; }
+    [[nodiscard]] uint8_t GetType() const { return m_type; }
 
     void SetSpeed(const float speed) { m_speed = speed; }
 
 private:
-    bool m_active           {true};
     uint8_t m_type          {0};
     float m_speed           {AlienSpeed};
     double m_lastMoveTime   {0.0f};
 
-    std::vector<AlienLaser> m_lasers    {};
-
     inline static double m_lastFireTime {0};
     inline static float m_moveTime = 0.75f;
-
 };
 
 }

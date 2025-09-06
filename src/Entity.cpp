@@ -1,4 +1,9 @@
 #include "Entity.h"
+
+#include <cassert>
+#include <iostream>
+#include <ostream>
+
 #include "Game.h"
 
 namespace SpaceInvaders {
@@ -7,23 +12,32 @@ void
 Entity::Update() {
 }
 
-Vector2 &
-Entity::GetPosition() {
+bool
+Entity::GetActive() const {
+   return m_active;
+}
+
+Vector2
+Entity::GetPosition() const {
     return m_position;
 }
 
 Rectangle
-Entity::GetRect() {
-    return {
-        m_position.x,
-        m_position.y,
-        static_cast<float>(GetTexture().width),
-        static_cast<float>(GetTexture().height)
-    };
+Entity::GetRect() const {
+    if (m_active) {
+        return {
+            m_position.x,
+            m_position.y,
+            static_cast<float>(GetTexture().width),
+            static_cast<float>(GetTexture().height)
+        };
+    }
+
+    return {};
 }
 
-Texture2D &
-Entity::GetTexture() {
+Texture2D
+Entity::GetTexture() const {
     return m_textures[m_textureIdx];
 }
 
@@ -34,6 +48,16 @@ Entity::GetNextTexture() {
         m_textureIdx = 0;
     }
     return m_textures[m_textureIdx];
+}
+
+void
+Entity::SetPosition(const Vector2 &position) {
+    m_position = position;
+}
+
+void
+Entity::SetActive(const bool active) {
+    m_active = active;
 }
 
 Sound &

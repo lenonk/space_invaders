@@ -13,29 +13,30 @@
 namespace SpaceInvaders {
 
 Game::Game() {
-    InitWindow(ScreenWidth + ScreenPadding, ScreenHeight + 2 * ScreenPadding, "Raylib Space Invaders!");
+    InitWindow(ScreenWidth, ScreenHeight, "Raylib Space Invaders!");
+
+    InitAudioDevice();
 
     GameResources->LoadTextures("Graphics");
     GameResources->LoadSounds("Sounds/Effects");
     GameResources->LoadMusic("Sounds/Music");
     GameResources->LoadFonts("Fonts");
 
-    InitAudioDevice();
     LoadHighScore();
+
+    SetRandomSeed((int32_t)GetTime());
 }
 
 Game::~Game() {
     SaveHighScore();
-
-    if (IsFontValid(m_font))
-        UnloadFont(m_font);
-    if (IsMusicValid(m_music))
-        UnloadMusicStream(m_music);
-
-    CloseAudioDevice();
     GameResources.reset(); // Resources need to be unloaded before CloseWindow() is called
+    CloseAudioDevice();
     m_player.reset();
     m_mystery.reset();
+    m_alienLasers.clear();
+    m_explosions.clear();
+    std::ranges::for_each(m_barriers, [](auto &barrier) { barrier.reset(); });
+    std::ranges::for_each(m_aliens, [](auto &alien) { alien.reset(); });
     CloseWindow();
 }
 
@@ -74,68 +75,204 @@ Game::Run() {
     }
 }
 
-void
-Game::Update() {
-    // Update Player position
-    m_player->Update();
-    m_mystery->Update();
-
-    MoveAliens();
-
-    // Pick a random alien to fire a laser
-    const int16_t a_idx = GetRandomValue(0, AlienRows * AlienCols - 1);
-    m_aliens[a_idx]->FireLaser();
-
-    // Check for expired explosions
-    std::ranges::remove_if(m_explosions, [](const auto &explosion) { return explosion->IsExpired(); });
-
-    // Check for dead aliens
-    std::ranges::for_each(m_aliens, [](auto &alien) { return !alien->Active(); });
+uint8_t
+Game::AliensLeft() const {
+    uint8_t count = 0;
+    std::ranges::for_each(m_aliens, [&count](auto &alien) {if (alien->GetActive()) { ++count; }});
+    return count;
 }
 
 void
-Game::CheckCollisions() {
+Game::Update() const {
+    // Update Mystery Ship
+    m_mystery->Update();
+
+    std::ranges::for_each(m_alienLasers, [](auto &laser) { laser->Update(); });
+    std::erase_if(m_alienLasers, [](auto& laser) { return !laser->GetActive(); });
+
+    // Check for expired explosions
+    std::erase_if(m_explosions, [](const auto &explosion) { return explosion.IsExpired(); });
+
+    // ***** Everything below here only happens if the game is not over.
+    if (m_gameOver) { return; }
+
+    // Update Player stuff
+    m_player->Update();
+
+    // Update aliens
+    MoveAliens();
+
+    // Pick a random alive alien to fire a laser (O(N) time, O(1) space, uniform)
+    int chosen = -1;
+    int aliveCount = 0;
+    for (int i = 0; i < static_cast<int>(m_aliens.size()); ++i) {
+        if (m_aliens[i]->GetActive()) {
+            ++aliveCount;
+            if (GetRandomValue(1, aliveCount) == 1) {
+                chosen = i;
+            }
+        }
+    }
+    if (chosen != -1) {
+        m_aliens[chosen]->FireLaser();
+    }
+}
+
+void
+Game::CheckPlayerCollisions() {
     using namespace std::ranges;
 
+    if (!m_player) { return; }
+
     // Player lasers can collide with aliens, barriers, alien lasers, and mystery ship
-    for_each(m_player->GetLasers(), [this](auto &laser) {
+    for (auto &laser : m_player->GetLasers()) {
         if (const auto entity = laser.CollidesWithAny(m_aliens); entity) {
             const auto alien = std::dynamic_pointer_cast<Alien>(entity);
-            laser.Explode(true);
+            laser.Explode(false);
             alien->Explode();
+            IncrementScore(alien->GetType() * 100);
+            continue;
         }
 
         if (const auto entity = laser.CollidesWithAny(m_barriers); entity) {
             const auto barrier = std::dynamic_pointer_cast<Barrier>(entity);
             if (const auto cellEntity = laser.CollidesWithAny(barrier->GetCellRects()); cellEntity) {
-                barrier->Damage(laser.GetPosition());
+                barrier->Damage(laser);
                 laser.Explode(true);
+                continue;
             }
         }
 
-        if (laser.CollidesWith(*m_mystery)) { m_mystery->Explode(); }
-    });
+        if (const auto entity = laser.CollidesWithAny(m_alienLasers); entity) {
+            const auto aLaser = std::dynamic_pointer_cast<Laser>(entity);
+            laser.Explode(true);
+            aLaser->Explode(false);
+            IncrementScore(1000);
+        }
+
+        if (laser.CollidesWith(*m_mystery)) {
+            laser.Explode(false);
+            m_mystery->Explode();
+            IncrementScore(500);
+        }
+    }
+}
+
+void
+Game::CheckAlienCollisions() {
+    using namespace std::ranges;
+
+    // Alien lasers can collide with the player and barriers (and player lasers, but that doesn't need to be
+    // handled here since it's already handled in CheckPlayerCollisions()
+    for (const auto &laser : m_alienLasers) {
+        if (m_player && laser->CollidesWith(*m_player)) {
+            laser->Explode(false);
+            if (m_player->Die()) {
+                DecrementPlayerLives();
+            }
+        }
+
+        // This may look confusing at first, but the idea is to check if the laser collides with the bounding
+        // rect of the entire barrier before checking if it collides with any individual barrier cell.  This
+        // Should be far more efficient since each barrier is 2691 pixels
+        if (const auto entity = laser->CollidesWithAny(m_barriers); entity) {
+            const auto barrier = std::dynamic_pointer_cast<Barrier>(entity);
+            if (const auto cellEntity = laser->CollidesWithAny(barrier->GetCellRects()); cellEntity) {
+                barrier->Damage(*laser);
+                laser->Explode(true);
+            }
+        }
+    }
+
+    for (const auto &alien : m_aliens) {
+        // Check collision with Barrier
+        if (const auto entity = alien->CollidesWithAny(m_barriers); entity) {
+            const auto barrier = std::dynamic_pointer_cast<Barrier>(entity);
+            if (const auto cellEntity = alien->CollidesWithAny(barrier->GetCellRects()); cellEntity) {
+                const auto cell = std::dynamic_pointer_cast<CellRect>(cellEntity);
+                barrier->Damage(cell->GetPosition());
+            }
+        }
+
+        // Finally, the alien itself can collide with the player
+        if (m_player) {
+            if (const auto entity = m_player->CollidesWithAny(m_aliens); entity) {
+                if (m_player->Die()) {
+                    DecrementPlayerLives();
+                }
+            }
+        }
+    }
+}
+
+void
+Game::DecrementPlayerLives() {
+    m_playerLives--;
+    if (m_playerLives <= 0) {
+        m_gameOver = true;
+    }
+}
+
+void
+Game::IncrementScore(int16_t score) {
+    m_score += score;
+    if (m_score > m_highScore) {
+        m_highScore = m_score;
+    }
+}
+
+void
+Game::Reset() {
+    m_gameOver = false;
+    m_score = 0;
+    m_alienLasers.clear();
+    m_explosions.clear();
+
+    std::ranges::for_each(m_barriers, [](auto &barrier) { barrier.reset(); });
+    std::ranges::for_each(m_aliens, [](auto &alien) { alien.reset(); });
+
+    m_player = std::make_unique<SpaceShip>();
+    m_mystery = std::make_unique<MysteryShip>();
+
+    m_playerLives = 3;
+
+    CreateAliens();
+    CreateBarriers();
+}
+
+void
+Game::CheckCollisions() {
+    if (m_paused) { return; }
+    CheckPlayerCollisions();
+    CheckAlienCollisions();
 }
 
 void
 Game::Draw() {
-    m_player->Draw();
-    m_mystery->Draw();
+    if (m_player)
+        m_player->Draw();
 
-    // Draw Barriers
+    if (m_mystery)
+        m_mystery->Draw();
+
+    // Draw all the things...
     std::ranges::for_each(m_barriers, [](auto &barrier) { barrier->Draw(); });
-
-    // Draw Aliens
     std::ranges::for_each(m_aliens, [](auto &alien) { alien->Draw(); });
-
-    // Draw Explosions
-    std::ranges::for_each(m_explosions, [](auto &explosion) { explosion->Draw(); });
+    std::ranges::for_each(m_explosions, [](auto &explosion) { explosion.Draw(); });
+    std::ranges::for_each(m_alienLasers, [](auto &laser) { laser->Draw(); });
 }
 
 void
 Game::HandleInput() {
-    if (IsKeyDown(KEY_P)) {
+    if (m_gameOver && IsKeyPressed(KEY_SPACE)) {
+        Reset();
+    } else if (IsKeyPressed(KEY_P)) {
         m_paused = !m_paused;
+        if (m_paused) {
+            PauseMusicStream(m_music);
+        } else {
+            PlayMusicStream(m_music);
+        }
     }
 }
 
@@ -146,7 +283,7 @@ Game::CreateBarriers() {
 
     for (int8_t i = 0; i < 4; i++) {
         const float offX = (i + 1) * gap + i * barrierWidth;
-        m_barriers[i] = std::make_unique<Barrier>(Vector2 { offX, GetScreenHeight() - 200.0f });
+        m_barriers[i] = std::make_unique<Barrier>(Vector2 { offX, GroundLevel - 100.0f });
     }
 }
 
@@ -168,6 +305,7 @@ Game::CreateAliens() {
         maxAlienHeight = std::max(maxAlienHeight, static_cast<float>(tex.height));
     }
 
+    // Magic numbers...yeah yeah...I know
     constexpr float horizontalSpacing = 10.0f; // Gap between alien columns
     constexpr float verticalSpacing = 10.0f;   // Gap between alien rows
 
@@ -199,7 +337,11 @@ Game::SaveHighScore() const {
     if (std::ofstream scoreFile("highscore.txt"); scoreFile.is_open()) {
         scoreFile << m_highScore;
     } else {
+#if defined(WIN32)
+        std::cerr << "Unable to open highscore.txt for writing\n";
+#else
         println(std::cerr, "Unable to open highscore.txt for writing");
+#endif
     }
 }
 
@@ -208,17 +350,25 @@ Game::LoadHighScore() {
     if (std::ifstream scoreFile("highscore.txt"); scoreFile.is_open()) {
         scoreFile >> m_highScore;
     } else {
+#if defined(WIN32)
+        std::cerr << "Unable to open highscore.txt for reading\n";
+#else
         println(std::cerr, "Unable to open highscore.txt for reading");
+#endif
     }
 }
 
 void
 Game::DrawUI() {
-    DrawRectangleRoundedLinesEx({10, 10, 780, 780}, 0.18f, 20, 2, Colors::Yellow);
-    DrawLineEx({25, 730}, {775, 730}, 3, Colors::Yellow);
+    // 10 is a magic number here, and I don't care.  It's just for positioning the frame around the view portal
+    DrawRectangleRoundedLinesEx( {10, 10, ScreenHeight - 20, ScreenWidth -20}, 0.18f, 20, 2, Colors::Yellow);
+    DrawLineEx( {ScreenPadding / 2, GroundLevel}, {ScreenWidth - ScreenPadding / 2, GroundLevel}, 3, Colors::Yellow);
 
     if (m_gameOver) {
         DrawTextEx(m_font, "GAME OVER", { 570, 740 }, 34, 2, Colors::Yellow);
+        const auto text = "PRESS SPACE TO PLAY AGAIN";
+        const auto size = MeasureTextEx(m_font, text, 34, 2);
+        DrawTextEx(m_font, "PRESS SPACE TO PLAY AGAIN", { ScreenWidth / 2 - size.x / 2, ScreenHeight / 2 - size.y / 2 }, 34, 2, Colors::Yellow);
     } else {
         DrawTextEx(m_font, "LEVEL 01", { 570, 740 }, 34, 2, Colors::Yellow);
     }
@@ -237,8 +387,13 @@ Game::DrawUI() {
 }
 
 void
-Game::AddExplosion(std::unique_ptr<Explosion> &explosion) {
-    m_explosions.push_back(std::move(explosion));
+Game::AddExplosion(const Explosion &explosion) {
+    m_explosions.push_back(explosion);
+}
+
+void
+Game::AddAlienLaser(const std::shared_ptr<Laser>& laser) {
+    m_alienLasers.push_back(laser);
 }
 
 void
@@ -248,12 +403,19 @@ Game::MoveAliens() const {
     for (const auto &alien : m_aliens) {
         alien->Update();
         // Check if the alien is off the screen
-        if (alien->GetPosition().x < ScreenPadding / 2.0f ||
-            alien->GetPosition().x + alien->GetTexture().width > GetScreenWidth() - ScreenPadding / 2) {
+        if (alien->GetActive() && (alien->GetPosition().x < ScreenPadding / 2.0f ||
+            alien->GetPosition().x + alien->GetTexture().width > GetScreenWidth() - ScreenPadding / 2)) {
             moveDown = true;
         }
 
         maxAlienHeight = std::max(maxAlienHeight, static_cast<float>(alien->GetTexture().height));
+    }
+
+    const auto aliensLeft = AliensLeft();
+    static auto lastTrigger = aliensLeft;
+    if (aliensLeft > 0 && (aliensLeft / lastTrigger) * 100 < 90) {
+        Alien::StepUpSpeed();
+        lastTrigger = aliensLeft;
     }
 
     if (!moveDown) return;
@@ -264,8 +426,6 @@ Game::MoveAliens() const {
         alien->SetSpeed(-alien->GetSpeed());
         alien->Move({ alien->GetPosition().x + alien->GetSpeed(), alien->GetPosition().y + maxAlienHeight / 2 });
     }
-
-    Alien::StepUpSpeed();
 }
 
 }

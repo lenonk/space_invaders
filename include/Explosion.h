@@ -21,7 +21,6 @@ public:
     ~Explosion() override = default;
 
     void Draw() override;
-    void Position(const Vector2 &position) { m_position = position; };
 
     [[nodiscard]] bool IsExpired() const;
 

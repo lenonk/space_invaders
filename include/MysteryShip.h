@@ -17,6 +17,7 @@ public:
     void Update() override;
     void Draw() override;
     void Explode();
+    void Reset();
 
 private:
     bool m_spawned {false};

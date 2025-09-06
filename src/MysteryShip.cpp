@@ -17,8 +17,15 @@ MysteryShip::MysteryShip() {
     assert(texture.has_value());
     m_textures.push_back(texture.value());
 
-    m_lastSpawnTime = nextSpawnTime = GetRandomValue(1, SpawnInterval);
+    m_lastSpawnTime = nextSpawnTime = GetRandomValue(5, SpawnInterval);
+    Reset();
+}
+
+void
+MysteryShip::Reset() {
+    m_spawned = false;
     m_position = {-1000.0f, -1000.0f};
+    m_lastSpawnTime = GetTime();;
 }
 
 void
@@ -40,7 +47,7 @@ MysteryShip::CheckSpawn() {
     }
     m_position.y = yVal;
     m_spawned = true;
-    nextSpawnTime = GetRandomValue(1, SpawnInterval);
+    nextSpawnTime = GetRandomValue(5, SpawnInterval);
 }
 
 void
@@ -52,7 +59,7 @@ MysteryShip::Update() {
 
     // TODO: Constrain ship to frame
     if (m_position.x < -GetTexture().width - 1 || m_position.x > GetScreenWidth() + 1) {
-        m_spawned = false;
+        Reset();
     }
 }
 
@@ -64,15 +71,15 @@ MysteryShip::Draw() {
 
 void
 MysteryShip::Explode() {
-    m_spawned = false;
-    m_position = {0, 0};
-    auto e = std::make_unique<Explosion>(Explosion::Type::Alien, Vector2{0, 0});
+    Explosion e(Explosion::Type::Alien, Vector2{0, 0});
 
-    const float xOff = m_position.x + GetTexture().width / 2 - e->GetTexture().width / 2;
-    const float yOff = m_position.y + GetTexture().height / 2 - e->GetTexture().height / 2;
+    const float xOff = m_position.x + GetTexture().width / 2 - e.GetTexture().width / 2;
+    const float yOff = m_position.y + GetTexture().height / 2 - e.GetTexture().height / 2;
 
-    e->Position({xOff, yOff});
+    e.SetPosition({xOff, yOff});
     Game::AddExplosion(e);
+
+    Reset();
 }
 
 }

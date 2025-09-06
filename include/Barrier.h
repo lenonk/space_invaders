@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <string>
 #include <string_view>
 
 #include <raylib.h>
@@ -17,14 +16,15 @@ public:
 
     explicit Barrier(Vector2 position);
     Barrier() = default;
-    ~Barrier() override = default;
+    ~Barrier() override;
 
     void Draw() override;
-    void Damage(Vector2 pos) const;
+    void Damage(const Laser &laser) const;
+    void Damage(Vector2 pos, int8_t direction = 1) const;
 
     [[nodiscard]] std::vector<std::shared_ptr<CellRect>> &GetCellRects() { return m_cellRects; };
 
-    [[nodiscard]] Rectangle GetRect() override;
+    [[nodiscard]] Rectangle GetRect() const override;
 
 private:
     Vector2 m_position {};

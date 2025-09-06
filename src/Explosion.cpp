@@ -50,6 +50,7 @@ Explosion::Draw() {
 bool
 Explosion::IsExpired() const {
     const auto time = GetTime();
+    assert(time >= 0);
     return time - m_createdTime > m_ttl[m_type];
 }
 

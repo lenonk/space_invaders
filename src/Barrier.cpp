@@ -1,10 +1,7 @@
 #include <algorithm>
-
-#include "Barrier.h"
-
 #include <cmath>
 
-#include "Colors.h"
+#include "Barrier.h"
 
 namespace SpaceInvaders {
 
@@ -22,6 +19,11 @@ Barrier::Barrier(const Vector2 position) : m_position(position) {
     });
 }
 
+Barrier::~Barrier() {
+    m_cellRects.clear();
+}
+
+
 void
 Barrier::Draw() {
     std::ranges::for_each(m_cellRects, [](auto &cell) {
@@ -31,71 +33,77 @@ Barrier::Draw() {
 }
 
 void
-Barrier::Damage(const Vector2 pos) const {
-    // Convert screen position to relative position within the barrier
-    const int relativeX = static_cast<int>(pos.x - m_position.x);
-    const int relativeY = static_cast<int>(pos.y - m_position.y);
+Barrier::Damage(const Laser &laser) const {
+    const int8_t direction = laser.GetType() == Laser::Type::Player ? -1 : 1;
+    Damage(laser.GetPosition(), direction);
+}
 
-    // Random damage parameters
-    const int damageWidth = GetRandomValue(2, 4);
-    const int damageHeight = GetRandomValue(5, 15);
-    const int additionalCells = GetRandomValue(8, 15);
+void
+Barrier::Damage(const Vector2 pos, const int8_t direction) const {
+    // Impact position relative to barrier grid
+    const int32_t impactX = std::clamp(static_cast<int32_t>(std::lround(pos.x - m_position.x)), 0, static_cast<int32_t>(BarrierWidth) - 1);
+    const int32_t impactY = static_cast<int32_t>(std::lround(pos.y - m_position.y));
 
-    // Create main damage crater
-    const int startX = relativeX - damageWidth / 2;
-    const int startY = relativeY - damageHeight / 2;
+    if (impactY < -10 || impactY > BarrierHeight + 10) { return; } // Ignore out of bounds
 
-    for (int y = 0; y < damageHeight; ++y) {
-        for (int x = 0; x < damageWidth; ++x) {
-            const int cellX = startX + x;
-            const int cellY = startY + y;
-
-            // Make sure we're within bounds
-            if (cellX >= 0 && cellX < BarrierWidth && cellY >= 0 && cellY < BarrierHeight) {
-                // Find and damage the cell at this position
-                for (auto& cell : m_cellRects) {
-                    if (cell->GetActive() &&
-                        static_cast<int>(cell->GetPosition().x - m_position.x) == cellX &&
-                        static_cast<int>(cell->GetPosition().y - m_position.y) == cellY) {
-                        cell->SetActive(false);
-                        break;
-                    }
-                }
-            }
+    // Always destroy the directly hit cell first
+    for (auto &cell : m_cellRects) {
+        if (static_cast<int16_t>(cell->GetPosition().x - m_position.x) == impactX &&
+            static_cast<int16_t>(cell->GetPosition().y - m_position.y) == impactY) {
+            cell->SetActive(false);
+            break;
         }
     }
 
-    // Damage additional random cells around the impact area
-    for (int i = 0; i < additionalCells; ++i) {
-        const int randomRadius = GetRandomValue(1, 8);
-        const int angle = GetRandomValue(0, 359);
+    // Damage approximately 500 random pixels around impact, with probability decreasing by distance
+    constexpr int16_t targetDamage = 500;
+    constexpr int16_t maxRadius = 15; // Maximum search radius
 
-        const int randomX = relativeX + static_cast<int>(randomRadius * cos(angle * DEG2RAD));
-        const int randomY = relativeY + static_cast<int>(randomRadius * sin(angle * DEG2RAD));
+    for (int16_t attempt = 0; attempt < targetDamage * 3; ++attempt) { // Try 3x to account for misses
+        // Generate random offset from impact point
+        const int dx = GetRandomValue(-maxRadius, maxRadius);
+        const int dy = GetRandomValue(-maxRadius, maxRadius);
 
-        // Make sure we're within bounds
-        if (randomX >= 0 && randomX < BarrierWidth && randomY >= 0 && randomY < BarrierHeight) {
-            // Find and damage the cell at this random position
-            for (auto& cell : m_cellRects) {
-                if (cell->GetActive() &&
-                    static_cast<int>(cell->GetPosition().x - m_position.x) == randomX &&
-                    static_cast<int>(cell->GetPosition().y - m_position.y) == randomY) {
-                    cell->SetActive(false);
-                    break;
-                }
+        const int16_t targetX = impactX + dx;
+        const int16_t targetY = impactY + dy;
+
+        // Skip if out of bounds
+        if (targetX < 0 || targetX >= BarrierWidth || targetY < 0 || targetY >= BarrierHeight) continue;
+
+        // Calculate distance from impact point
+        const float distance = std::sqrt(static_cast<float>(dx * dx + dy * dy));
+
+        // Calculate directional bias: cells in the laser's direction are more likely to be hit
+        const float directionalWeight = (dy * direction > 0) ? 1.5f : 1.0f; // 1.5x weight for correct direction
+
+        // Probability decreases with distance, increases with directional alignment
+        // Close cells (distance < 3) have ~90% chance, far cells (distance > 10) have ~10% chance
+        const float baseProbability = std::max(0.1f, 1.0f - (distance / 15.0f));
+        const float adjustedProbability = std::min(0.95f, baseProbability * directionalWeight);
+
+        // Random chance based on calculated probability
+        const auto chance = static_cast<int32_t>(adjustedProbability * 100);
+        if (GetRandomValue(1, 100) > chance) continue;
+
+        // Find and damage the cell at this position
+        for (auto& cell : m_cellRects) {
+            if (cell->GetActive() &&
+                static_cast<int16_t>(cell->GetPosition().x - m_position.x) == targetX &&
+                static_cast<int16_t>(cell->GetPosition().y - m_position.y) == targetY) {
+                cell->SetActive(false);
+                break;
             }
         }
     }
 }
 
 Rectangle
-Barrier::GetRect() {
+Barrier::GetRect() const {
     return {
         m_position.x,
         m_position.y,
         static_cast<float>(BarrierWidth),
         static_cast<float>(BarrierHeight)};
 }
-
 
 }
