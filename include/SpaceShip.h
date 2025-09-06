@@ -8,11 +8,11 @@ namespace SpaceInvaders {
 
 class SpaceShip final : public Entity {
 public:
-    static constexpr float Speed = 380.0f;
-    static constexpr float FireSpeed = 0.2f;
-    static constexpr double RespawnTime = 1.5f;
-    static constexpr double InvulnerableTime = 2.0f;
-    static constexpr uint8_t MaxLasers = 1;
+    const float Speed = 380.0f;
+    const float FireSpeed = 0.2f;
+    const double RespawnTime = 1.5f;
+    const double InvulnerableTime = 2.0f;
+    const uint8_t MaxLasers = 1;
 
     SpaceShip();
     ~SpaceShip() override = default;

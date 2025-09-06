@@ -9,6 +9,7 @@ class Laser final : public Entity{
 public:
     static constexpr float PlayerSpeed = -520.0f;
     static constexpr float AlienSpeed = -420.0f;
+
     enum class Type {
         None,
         Player,

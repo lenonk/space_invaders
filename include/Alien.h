@@ -12,14 +12,12 @@ namespace SpaceInvaders {
 class Alien final : public Entity {
 public:
     static constexpr uint8_t AlienTypes { 3 };
-    static constexpr float AlienSpeed = 10.0f;
-    static constexpr float AlienMinFireSpeed = 750.0f;
-    static constexpr float AlienMaxFireSpeed = 5000.0f;
+
+    const float AlienSpeed = 10.0f;
+    const float AlienMinFireSpeed = 750.0f;
+    const float AlienMaxFireSpeed = 5000.0f;
 
     Alien(Vector2 position, uint8_t type);
-    // TODO: Check if we still need these
-    Alien(const Alien &other) = default;
-    Alien &operator=(const Alien &other) = default;
     Alien() = default;
     ~Alien() override = default;
 
