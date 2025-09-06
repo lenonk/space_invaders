@@ -42,9 +42,13 @@ void
 Barrier::Damage(const Vector2 pos, const int8_t direction) const {
     // Impact position relative to barrier grid
     const int32_t impactX = std::clamp(static_cast<int32_t>(std::lround(pos.x - m_position.x)), 0, static_cast<int32_t>(BarrierWidth) - 1);
-    const int32_t impactY = static_cast<int32_t>(std::lround(pos.y - m_position.y));
+    const auto impactY = static_cast<int32_t>(std::lround(pos.y - m_position.y));
 
     if (impactY < -10 || impactY > BarrierHeight + 10) { return; } // Ignore out of bounds
+
+    // DEBUG: Print impact coordinates for alien lasers
+    std::printf("Alien laser impact: screen(%.1f, %.1f) -> barrier(%d, %d) | barrier_pos(%.1f, %.1f)\n",
+        pos.x, pos.y, impactX, impactY, m_position.x, m_position.y);
 
     // Always destroy the directly hit cell first
     for (auto &cell : m_cellRects) {

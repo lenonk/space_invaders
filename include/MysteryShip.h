@@ -6,9 +6,9 @@ namespace SpaceInvaders {
 
 class MysteryShip : public Entity {
 public:
-    static constexpr float Speed = 150.0f;
-    static constexpr float yVal = 50.0f;
-    static constexpr double SpawnInterval = 25.0f;
+    const float Speed = 150.0f;
+    const float yVal = 50.0f;
+    const double SpawnInterval = 25.0f;
 
     MysteryShip();
     ~MysteryShip() override = default;

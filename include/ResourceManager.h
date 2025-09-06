@@ -23,8 +23,8 @@ public:
 private:
     std::map<std::string, Texture2D> m_texCache {};
     std::map<std::string, Sound> m_sndCache     {};
-    std::map<std::string, Music> m_musCache   {};
-    std::map<std::string, Font> m_fntCache     {};
+    std::map<std::string, Music> m_musCache     {};
+    std::map<std::string, Font> m_fntCache      {};
 };
 
 }
