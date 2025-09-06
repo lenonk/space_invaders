@@ -31,11 +31,7 @@ ResourceManager::LoadTextures(const std::string &path) {
 
         const auto tex = LoadTexture(p.string().c_str());
         if (!IsTextureValid(tex)) {
-#if defined(WIN32)
-            std::cerr << "WARNING: Failed to load texture: " << p.filename().string() << std::endl;
-#else
             std::println(std::cerr, "WARNING: Failed to load texture: {}", p.filename().string());
-#endif
             continue;
         }
         m_texCache[p.filename().string()] = tex;
@@ -55,11 +51,7 @@ ResourceManager::LoadSounds(const std::string &path) {
 
         const auto snd = LoadSound(p.string().c_str());
         if (!IsSoundValid(snd)) {
-#if defined(WIN32)
-            std::cerr << "WARNING: Failed to load sound: " << p.filename().string() << std::endl;
-#else
             std::println(std::cerr, "WARNING: Failed to load sound: {}", p.filename().string());
-#endif
             continue;
         }
         m_sndCache[p.filename().string()] = snd;
@@ -79,11 +71,7 @@ ResourceManager::LoadMusic(const std::string &path) {
 
         const auto mus = LoadMusicStream(p.string().c_str());
         if (!IsMusicValid(mus)) {
-#if defined(WIN32)
-            std::cerr << "WARNING: Failed to load music: " << p.filename().string() << std::endl;
-#else
             std::println(std::cerr, "WARNING: Failed to load music: {}", p.filename().string());
-#endif
             continue;
         }
         m_musCache[p.filename().string()] = mus;
@@ -103,11 +91,7 @@ ResourceManager::LoadFonts(const std::string &path) {
 
         const auto fnt = LoadFont(p.string().c_str());
         if (!IsFontValid(fnt)) {
-#if defined(WIN32)
-            std::cerr << "WARNING: Failed to load font: " << p.filename().string() << std::endl;
-#else
             std::println(std::cerr, "WARNING: Failed to load font: {}", p.filename().string());
-#endif
             continue;
         }
         m_fntCache[p.filename().string()] = fnt;

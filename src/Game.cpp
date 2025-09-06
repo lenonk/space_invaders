@@ -337,11 +337,7 @@ Game::SaveHighScore() const {
     if (std::ofstream scoreFile("highscore.txt"); scoreFile.is_open()) {
         scoreFile << m_highScore;
     } else {
-#if defined(WIN32)
-        std::cerr << "Unable to open highscore.txt for writing\n";
-#else
         println(std::cerr, "Unable to open highscore.txt for writing");
-#endif
     }
 }
 
@@ -350,11 +346,7 @@ Game::LoadHighScore() {
     if (std::ifstream scoreFile("highscore.txt"); scoreFile.is_open()) {
         scoreFile >> m_highScore;
     } else {
-#if defined(WIN32)
-        std::cerr << "Unable to open highscore.txt for reading\n";
-#else
         println(std::cerr, "Unable to open highscore.txt for reading");
-#endif
     }
 }
 

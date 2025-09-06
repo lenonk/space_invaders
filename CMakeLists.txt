@@ -40,12 +40,12 @@ set(SRCS
         src/CellRect.cpp
 )
 
-add_executable(space_invaders ${SRCS})
+add_executable(space_invaders ${HDRS} ${SRCS})
 
 # Handle cross-compilation for Windows
 if(WIN32)
     # Path to your extracted Raylib Windows binaries
-    set(RAYLIB_PATH "${CMAKE_SOURCE_DIR}/raylib-5.5_win64_mingw-w64")
+    set(RAYLIB_PATH "${CMAKE_SOURCE_DIR}/raylib-5.5_win64_msvc16")
 
     target_include_directories(space_invaders PRIVATE
             include
@@ -54,16 +54,17 @@ if(WIN32)
 
     target_link_directories(space_invaders PRIVATE ${RAYLIB_PATH}/lib)
 
-    set_target_properties(space_invaders PROPERTIES
-        LINK_FLAGS "-static-libgcc -static-libstdc++ -static"
-    )
+    #set_target_properties(space_invaders PROPERTIES
+    #    LINK_FLAGS "-static-libgcc -static-libstdc++ -static"
+    #)
 
-    target_link_libraries(space_invaders
-            -Wl,-Bstatic
-            raylib
-            -Wl,-Bdynamic
-            opengl32 gdi32 winmm
-    )
+    #target_link_libraries(space_invaders
+    #        -Wl,-Bstatic
+    #        raylib
+    #        -Wl,-Bdynamic
+    #        opengl32 gdi32 winmm
+    #)
+    target_link_libraries(space_invaders raylib opengl32 gdi32 winmm)
 else()
     # Linux build
 #    set_target_properties(space_invaders PROPERTIES
