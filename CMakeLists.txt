@@ -38,6 +38,7 @@ set(SRCS
         src/Entity.cpp
         src/ResourceManager.cpp
         src/CellRect.cpp
+        include/Logger.h
 )
 
 add_executable(space_invaders ${HDRS} ${SRCS})

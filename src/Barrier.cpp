@@ -13,7 +13,7 @@ Barrier::Barrier(const Vector2 position) : m_position(position) {
         const auto xOff = static_cast<float>(index % BarrierWidth);
         const auto yOff = static_cast<float>(index / BarrierWidth);
 
-        auto cell_ptr = std::make_shared<CellRect>(Vector2 {m_position.x + xOff, m_position.y + yOff});
+        const auto cell_ptr = std::make_shared<CellRect>(Vector2 {m_position.x + xOff, m_position.y + yOff});
         m_cellRects.push_back(cell_ptr);
         ++index;
     });

@@ -1,12 +1,12 @@
 #include "Game.h"
 
 #include <algorithm>
-#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <ranges>
 
 #include "Colors.h"
+#include "Logger.h"
 #include "MysteryShip.h"
 #include "SpaceShip.h"
 
@@ -43,35 +43,45 @@ Game::~Game() {
 void
 Game::Run() {
     const auto f = GameResources->GetFont("monogram.ttf");
-    assert(f.has_value());
-    m_font = f.value();
+    if (!f.has_value()) {
+        LogError("Unable to load font: monogram.ttf");
+        return;
+    }
 
     const auto music = GameResources->GetMusic("music.ogg");
-    assert(music.has_value());
+    if (!music.has_value()) {
+        LogError("Unable to load music: music.ogg");
+        return;
+    }
+
     m_music = music.value();
 
-    CreateAliens();
-    CreateBarriers();
+    try {
+        CreateAliens();
+        CreateBarriers();
 
-    m_player = std::make_unique<SpaceShip>();
-    m_mystery = std::make_unique<MysteryShip>();
+        m_player = std::make_unique<SpaceShip>();
+        m_mystery = std::make_unique<MysteryShip>();
 
-    PlayMusicStream(m_music);
+        PlayMusicStream(m_music);
 
-    while (!WindowShouldClose()) {
-        UpdateMusicStream(m_music);
-        HandleInput();
-        BeginDrawing();
-        ClearBackground(Colors::Gray);
-        DrawUI();
+        while (!WindowShouldClose()) {
+            UpdateMusicStream(m_music);
+            HandleInput();
+            BeginDrawing();
+            ClearBackground(Colors::Gray);
+            DrawUI();
 
-        if (!m_paused) {
-            Update();
-            CheckCollisions();
+            if (!m_paused) {
+                Update();
+                CheckCollisions();
+            }
+
+            Draw();
+            EndDrawing();
         }
-
-        Draw();
-        EndDrawing();
+    } catch (const std::runtime_error &e) {
+        LogError(e.what());
     }
 }
 
@@ -231,13 +241,18 @@ Game::Reset() {
     std::ranges::for_each(m_barriers, [](auto &barrier) { barrier.reset(); });
     std::ranges::for_each(m_aliens, [](auto &alien) { alien.reset(); });
 
-    m_player = std::make_unique<SpaceShip>();
-    m_mystery = std::make_unique<MysteryShip>();
+    try {
+        m_player = std::make_unique<SpaceShip>();
+        m_mystery = std::make_unique<MysteryShip>();
 
-    m_playerLives = 3;
+        m_playerLives = 3;
 
-    CreateAliens();
-    CreateBarriers();
+        CreateAliens();
+        CreateBarriers();
+    } catch (const std::runtime_error &e) {
+        LogError(e.what());
+        std::terminate();
+    }
 }
 
 void

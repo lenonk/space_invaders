@@ -4,7 +4,6 @@
 
 #include "../include/MysteryShip.h"
 
-#include <cassert>
 #include <iostream>
 #include <raylib.h>
 
@@ -14,7 +13,9 @@
 namespace SpaceInvaders {
 MysteryShip::MysteryShip() {
     const auto texture = Game::GameResources->GetTexture("mystery.png");
-    assert(texture.has_value());
+    if (!texture.has_value()) {
+        throw std::runtime_error("Failed to load mystery ship texture");
+    }
     m_textures.push_back(texture.value());
 
     m_lastSpawnTime = nextSpawnTime = GetRandomValue(5, SpawnInterval);

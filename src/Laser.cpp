@@ -15,23 +15,31 @@ Laser::Laser(const Type type) {
     if (type == Type::Alien) {
         for (const auto i : std::views::iota(1, 5)) {
             auto texture = Game::GameResources->GetTexture(std::format("alien_laser_{}.png", std::to_string(i)));
-            assert(texture.has_value());
+            if (!texture.has_value()) {
+                throw std::runtime_error(std::format("Failed to load alien laser texture: alien_laser_{}.png", i));
+            }
             m_textures.push_back(texture.value());
         }
 
         const auto sound = Game::GameResources->GetSound("laser.ogg");
-        assert(sound.has_value());
+        if (!sound.has_value()) {
+            throw std::runtime_error("Failed to load alien laser sound");
+        }
         m_sounds.push_back(sound.value());
 
         m_textureSwapTime = 0.125;
         m_speed = -AlienSpeed;
     } else if (type == Type::Player) {
         const auto texture = Game::GameResources->GetTexture("player_laser_1.png");
-        assert(texture.has_value());
+        if (!texture.has_value()) {
+            throw std::runtime_error("Failed to load player laser texture");
+        }
         m_textures.push_back(texture.value());
 
         const auto sound = Game::GameResources->GetSound("laser.ogg");
-        assert(sound.has_value());
+        if (!sound.has_value()) {
+            throw std::runtime_error("Failed to load player laser sound");
+        }
         m_sounds.push_back(sound.value());
 
     }

@@ -4,12 +4,12 @@
 
 #include "Alien.h"
 
-#include <cassert>
 #include <numeric>
 #include <ranges>
 
 #include "Explosion.h"
 #include "Game.h"
+#include "Logger.h"
 
 namespace SpaceInvaders {
 Alien::Alien(const Vector2 position, const uint8_t type) {
@@ -18,7 +18,9 @@ Alien::Alien(const Vector2 position, const uint8_t type) {
 
     for (const auto i : std::views::iota(1, 3)) {
         auto texture = Game::GameResources->GetTexture(std::format("alien_{}_ani_{}.png", std::to_string(type), i));
-        assert(texture.has_value());
+        if (!texture.has_value()) {
+            throw std::runtime_error(std::format("Failed to load alien texture: alien_{}_ani_{}.png", type, i));
+        }
         m_textures.push_back(texture.value());
     }
 }

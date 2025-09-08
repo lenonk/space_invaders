@@ -3,11 +3,9 @@
 
 #include "Explosion.h"
 
-#include <cassert>
 #include <iostream>
 
 #include "Game.h"
-#include "Laser.h"
 
 namespace SpaceInvaders {
 Explosion::Explosion(const Type type, const Vector2 &position) : m_type(type) {
@@ -29,11 +27,15 @@ Explosion::Explosion(const Type type, const Vector2 &position) : m_type(type) {
     }
 
     const auto texture = Game::GameResources->GetTexture(textureName);
-    assert(texture.has_value());
+    if (!texture.has_value()) {
+        throw std::runtime_error(std::format("Failed to load texture: {}", textureName));
+    }
     m_textures.push_back(texture.value());
 
     const auto sound = Game::GameResources->GetSound(soundName);
-    assert(sound.has_value());
+    if (!sound.has_value()) {
+        throw std::runtime_error(std::format("Failed to load sound: {}", soundName));
+    }
     m_sounds.push_back(sound.value());
 
     m_createdTime = GetTime();
@@ -50,7 +52,6 @@ Explosion::Draw() {
 bool
 Explosion::IsExpired() const {
     const auto time = GetTime();
-    assert(time >= 0);
     return time - m_createdTime > m_ttl[m_type];
 }
 

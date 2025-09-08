@@ -1,6 +1,3 @@
-#include <iostream>
-#include <raylib.h>
-
 #include "Game.h"
 
 int32_t

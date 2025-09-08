@@ -1,9 +1,5 @@
 #include "Entity.h"
 
-#include <cassert>
-#include <iostream>
-#include <ostream>
-
 #include "Game.h"
 
 namespace SpaceInvaders {
