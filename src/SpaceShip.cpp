@@ -44,9 +44,11 @@ SpaceShip::Update() {
 }
 
 void
-SpaceShip::Draw() {
+SpaceShip::Draw() const {
     if (!m_active) { return; }
-    std::ranges::for_each(m_lasers, [](auto &laser) { laser.Draw(); });
+
+    for (const auto &laser : m_lasers) { laser.Draw(); }
+
     if (Game::GamePaused() || !m_invulnerable || (int64_t)(GetTime() * 10) % 2 == 0)
         DrawTextureV(GetTexture(), m_position, WHITE);
 }
@@ -99,7 +101,7 @@ SpaceShip::FireLaser() {
         return;
 
     m_lastFireTime = time;
-    Laser l(Laser::Type::Player);
+    PlayerLaser l;
     l.SetPosition({
         m_position.x + GetTexture().width / 2.0f - l.GetTexture().width / 2.0f,
         m_position.y}

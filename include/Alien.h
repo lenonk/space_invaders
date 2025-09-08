@@ -21,7 +21,7 @@ public:
     Alien() = default;
     ~Alien() override = default;
 
-    void Draw() override;
+    void Draw() const override;
     void Update() override;
     void Move(const Vector2 &position);
     void FireLaser() const;

@@ -18,8 +18,9 @@ public:
     Barrier() = default;
     ~Barrier() override;
 
-    void Draw() override;
-    void Damage(const Laser &laser) const;
+    void Draw() const override;
+    void Damage(const PlayerLaser &laser) const;
+    void Damage(const AlienLaser &laser) const;
     void Damage(Vector2 pos, int8_t direction = 1) const;
 
     [[nodiscard]] std::vector<std::shared_ptr<CellRect>> &GetCellRects() { return m_cellRects; };

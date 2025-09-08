@@ -45,7 +45,7 @@ Explosion::Explosion(const Type type, const Vector2 &position) : m_type(type) {
 }
 
 void
-Explosion::Draw() {
+Explosion::Draw() const {
     DrawTextureV(GetTexture(), m_position, WHITE);
 }
 

@@ -18,7 +18,7 @@ public:
     ~SpaceShip() override = default;
 
     void Update() override;
-    void Draw() override;
+    void Draw() const override;
     void Reset();
 
     void FireLaser();
@@ -27,7 +27,7 @@ public:
 
     bool Die();
 
-    [[nodiscard]] std::vector<Laser> &GetLasers() { return m_lasers; }
+    [[nodiscard]] std::vector<PlayerLaser> &GetLasers() { return m_lasers; }
 
 private:
     bool m_active {true};
@@ -36,7 +36,7 @@ private:
     double m_invulnerableTimer {0};
     double m_lastFireTime {0};
 
-    std::vector<Laser> m_lasers {};
+    std::vector<PlayerLaser> m_lasers {};
 };
 
 }

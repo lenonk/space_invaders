@@ -8,7 +8,7 @@ CellRect::CellRect(const Vector2 &position) {
 }
 
 void
-CellRect::Draw() {
+CellRect::Draw() const {
     DrawRectangleV(m_position, {1, 1}, Colors::Yellow);
 }
 

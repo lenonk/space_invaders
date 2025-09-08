@@ -18,85 +18,42 @@ ResourceManager::~ResourceManager() {
     for_each(m_fntCache | views::values, [](const auto &fnt) { ::UnloadFont(fnt); });
 }
 
+template<RaylibResource ResourceType>
 void
-ResourceManager::LoadTextures(const std::string &path) {
+ResourceManager::LoadResources(const std::string &path, const std::string &extension,
+                                   std::map<std::string, ResourceType> &cache) {
     const fs::path dir(path);
+
+    if (!fs::exists(dir)) {
+        std::println(std::cerr, "WARNING: Resource directory does not exist: {}", path);
+        return;
+    }
+
     for (const fs::directory_entry &entry : fs::recursive_directory_iterator(dir)) {
         if (!entry.is_regular_file())
             continue;
 
         const fs::path &p = entry.path();
-        if (p.extension().string() != ".png")
+        if (p.extension().string() != extension)
             continue;
 
-        const auto tex = LoadTexture(p.string().c_str());
-        if (!IsTextureValid(tex)) {
-            std::println(std::cerr, "WARNING: Failed to load texture: {}", p.filename().string());
+        const auto resource = ResourceTraits<ResourceType>::Load(p.string().c_str());
+        if (!ResourceTraits<ResourceType>::IsValid(resource)) {
+            std::println(std::cerr, "WARNING: Failed to load {}: {}",
+                        ResourceTraits<ResourceType>::TypeName(),
+                        p.filename().string());
             continue;
         }
-        m_texCache[p.filename().string()] = tex;
+
+        cache[p.filename().string()] = resource;
     }
 }
 
-void
-ResourceManager::LoadSounds(const std::string &path) {
-    const fs::path dir(path);
-    for (const fs::directory_entry &entry : fs::recursive_directory_iterator(dir)) {
-        if (!entry.is_regular_file())
-            continue;
-
-        const fs::path &p = entry.path();
-        if (p.extension().string() != ".ogg")
-            continue;
-
-        const auto snd = LoadSound(p.string().c_str());
-        if (!IsSoundValid(snd)) {
-            std::println(std::cerr, "WARNING: Failed to load sound: {}", p.filename().string());
-            continue;
-        }
-        m_sndCache[p.filename().string()] = snd;
-    }
-}
-
-void
-ResourceManager::LoadMusic(const std::string &path) {
-    const fs::path dir(path);
-    for (const fs::directory_entry &entry : fs::recursive_directory_iterator(dir)) {
-        if (!entry.is_regular_file())
-            continue;
-
-        const fs::path &p = entry.path();
-        if (p.extension().string() != ".ogg")
-            continue;
-
-        const auto mus = LoadMusicStream(p.string().c_str());
-        if (!IsMusicValid(mus)) {
-            std::println(std::cerr, "WARNING: Failed to load music: {}", p.filename().string());
-            continue;
-        }
-        m_musCache[p.filename().string()] = mus;
-    }
-}
-
-void
-ResourceManager::LoadFonts(const std::string &path) {
-    const fs::path dir(path);
-    for (const fs::directory_entry &entry : fs::recursive_directory_iterator(dir)) {
-        if (!entry.is_regular_file())
-            continue;
-
-        const fs::path &p = entry.path();
-        if (p.extension().string() != ".ttf")
-            continue;
-
-        const auto fnt = LoadFont(p.string().c_str());
-        if (!IsFontValid(fnt)) {
-            std::println(std::cerr, "WARNING: Failed to load font: {}", p.filename().string());
-            continue;
-        }
-        m_fntCache[p.filename().string()] = fnt;
-    }
-}
+// Explicit template instantiations to ensure the template is compiled
+template void ResourceManager::LoadResources<Texture2D>(const std::string &path, const std::string &extension, std::map<std::string, Texture2D> &cache);
+template void ResourceManager::LoadResources<Sound>(const std::string &path, const std::string &extension, std::map<std::string, Sound> &cache);
+template void ResourceManager::LoadResources<Music>(const std::string &path, const std::string &extension, std::map<std::string, Music> &cache);
+template void ResourceManager::LoadResources<Font>(const std::string &path, const std::string &extension, std::map<std::string, Font> &cache);
 
 std::optional<std::reference_wrapper<Texture2D>>
 ResourceManager::GetTexture(const std::string &path) {

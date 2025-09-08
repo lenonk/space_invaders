@@ -15,7 +15,7 @@ public:
 
     void CheckSpawn();
     void Update() override;
-    void Draw() override;
+    void Draw() const override;
     void Explode();
     void Reset();
 

@@ -65,7 +65,7 @@ MysteryShip::Update() {
 }
 
 void
-MysteryShip::Draw() {
+MysteryShip::Draw() const {
     if (!m_spawned) { return; }
     DrawTextureV(GetTexture(), m_position, WHITE);
 }

@@ -30,13 +30,13 @@ Game::Game() {
 Game::~Game() {
     SaveHighScore();
     GameResources.reset(); // Resources need to be unloaded before CloseWindow() is called
-    CloseAudioDevice();
     m_player.reset();
     m_mystery.reset();
     m_alienLasers.clear();
     m_explosions.clear();
-    std::ranges::for_each(m_barriers, [](auto &barrier) { barrier.reset(); });
-    std::ranges::for_each(m_aliens, [](auto &alien) { alien.reset(); });
+    for (auto &barrier : m_barriers) { barrier.reset(); }
+    for (auto &alien : m_aliens) { alien.reset(); }
+    CloseAudioDevice();
     CloseWindow();
 }
 
@@ -47,13 +47,13 @@ Game::Run() {
         LogError("Unable to load font: monogram.ttf");
         return;
     }
+    m_font = f.value();
 
     const auto music = GameResources->GetMusic("music.ogg");
     if (!music.has_value()) {
         LogError("Unable to load music: music.ogg");
         return;
     }
-
     m_music = music.value();
 
     try {
@@ -88,31 +88,25 @@ Game::Run() {
 uint8_t
 Game::AliensLeft() const {
     uint8_t count = 0;
-    std::ranges::for_each(m_aliens, [&count](auto &alien) {if (alien->GetActive()) { ++count; }});
+    for (const auto &alien : m_aliens) { if (alien->GetActive()) { ++count; }}
     return count;
 }
 
 void
 Game::Update() const {
-    // Update Mystery Ship
     m_mystery->Update();
 
-    std::ranges::for_each(m_alienLasers, [](auto &laser) { laser->Update(); });
-    std::erase_if(m_alienLasers, [](auto& laser) { return !laser->GetActive(); });
+    for (const auto laser : m_alienLasers) { laser->Update(); }
 
-    // Check for expired explosions
+    std::erase_if(m_alienLasers, [](auto& laser) { return !laser->GetActive(); });
     std::erase_if(m_explosions, [](const auto &explosion) { return explosion.IsExpired(); });
 
     // ***** Everything below here only happens if the game is not over.
     if (m_gameOver) { return; }
 
-    // Update Player stuff
     m_player->Update();
-
-    // Update aliens
     MoveAliens();
 
-    // Pick a random alive alien to fire a laser (O(N) time, O(1) space, uniform)
     int chosen = -1;
     int aliveCount = 0;
     for (int i = 0; i < static_cast<int>(m_aliens.size()); ++i) {
@@ -128,13 +122,28 @@ Game::Update() const {
     }
 }
 
+/**
+ * @brief Checks for and handles collisions between the player's lasers and various game entities.
+ *
+ * This method determines whether any of the player's active lasers collide
+ * with aliens, barriers, alien lasers, or the mystery ship, and performs
+ * the corresponding actions based on the collision:
+ * - Player lasers colliding with aliens will destroy both the laser and the alien,
+ *   and update the score based on the type of the alien.
+ * - Player lasers colliding with barriers will either damage the barrier or
+ *   specific cells of the barrier if applicable, and destroy the laser.
+ * - Player lasers colliding with alien lasers will destroy both lasers
+ *   and reward points to the player.
+ * - Player lasers colliding with the mystery ship will destroy both
+ *   the laser and the mystery ship, and award points to the player.
+ *
+ * This function ensures proper interaction between the player's lasers
+ * and other game entities, updating the game state accordingly.
+ */
 void
 Game::CheckPlayerCollisions() {
-    using namespace std::ranges;
-
     if (!m_player) { return; }
 
-    // Player lasers can collide with aliens, barriers, alien lasers, and mystery ship
     for (auto &laser : m_player->GetLasers()) {
         if (const auto entity = laser.CollidesWithAny(m_aliens); entity) {
             const auto alien = std::dynamic_pointer_cast<Alien>(entity);
@@ -168,12 +177,28 @@ Game::CheckPlayerCollisions() {
     }
 }
 
+/**
+ * @brief Handles collisions between alien entities, alien lasers, the player, and barriers.
+ *
+ * This function checks for and resolves multiple types of collisions in the game, ensuring accurate
+ * interaction between alien lasers, barriers, the player, and aliens themselves. Collisions are checked
+ * and resolved in a priority-based manner:
+ *
+ * - Alien lasers are checked for collisions with the player. If a collision occurs, the laser is destroyed,
+ *   and the player's life is decremented if the player dies.
+ * - Alien lasers are checked for collisions with barriers. The function first checks the bounding rectangle
+ *   of each barrier for efficiency before processing individual cells within the barrier. If a collision
+ *   occurs with a barrier cell, the barrier is damaged at the collided cell, and the laser is destroyed.
+ * - Aliens are checked for collisions with barriers. Similar to laser-barrier interaction, the bounding
+ *   rectangle is checked first, followed by the individual cells, which are damaged accordingly.
+ * - Aliens are checked for collisions with the player. If a collision occurs, the player's life is decremented
+ *   if the player dies.
+ *
+ * This function ensures efficient calculations by selectively narrowing down collision checks to relevant objects
+ * and by appropriately resolving interactions between entities.
+ */
 void
 Game::CheckAlienCollisions() {
-    using namespace std::ranges;
-
-    // Alien lasers can collide with the player and barriers (and player lasers, but that doesn't need to be
-    // handled here since it's already handled in CheckPlayerCollisions()
     for (const auto &laser : m_alienLasers) {
         if (m_player && laser->CollidesWith(*m_player)) {
             laser->Explode(false);
@@ -182,9 +207,6 @@ Game::CheckAlienCollisions() {
             }
         }
 
-        // This may look confusing at first, but the idea is to check if the laser collides with the bounding
-        // rect of the entire barrier before checking if it collides with any individual barrier cell.  This
-        // Should be far more efficient since each barrier is 2691 pixels
         if (const auto entity = laser->CollidesWithAny(m_barriers); entity) {
             const auto barrier = std::dynamic_pointer_cast<Barrier>(entity);
             if (const auto cellEntity = laser->CollidesWithAny(barrier->GetCellRects()); cellEntity) {
@@ -195,7 +217,6 @@ Game::CheckAlienCollisions() {
     }
 
     for (const auto &alien : m_aliens) {
-        // Check collision with Barrier
         if (const auto entity = alien->CollidesWithAny(m_barriers); entity) {
             const auto barrier = std::dynamic_pointer_cast<Barrier>(entity);
             if (const auto cellEntity = alien->CollidesWithAny(barrier->GetCellRects()); cellEntity) {
@@ -204,7 +225,6 @@ Game::CheckAlienCollisions() {
             }
         }
 
-        // Finally, the alien itself can collide with the player
         if (m_player) {
             if (const auto entity = m_player->CollidesWithAny(m_aliens); entity) {
                 if (m_player->Die()) {
@@ -224,7 +244,7 @@ Game::DecrementPlayerLives() {
 }
 
 void
-Game::IncrementScore(int16_t score) {
+Game::IncrementScore(const int16_t score) {
     m_score += score;
     if (m_score > m_highScore) {
         m_highScore = m_score;
@@ -238,8 +258,8 @@ Game::Reset() {
     m_alienLasers.clear();
     m_explosions.clear();
 
-    std::ranges::for_each(m_barriers, [](auto &barrier) { barrier.reset(); });
-    std::ranges::for_each(m_aliens, [](auto &alien) { alien.reset(); });
+    for (auto &barrier: m_barriers) { barrier.reset(); }
+    for (auto &alien: m_aliens) { alien.reset(); }
 
     try {
         m_player = std::make_unique<SpaceShip>();
@@ -263,7 +283,7 @@ Game::CheckCollisions() {
 }
 
 void
-Game::Draw() {
+Game::Draw() const {
     if (m_player)
         m_player->Draw();
 
@@ -271,10 +291,10 @@ Game::Draw() {
         m_mystery->Draw();
 
     // Draw all the things...
-    std::ranges::for_each(m_barriers, [](auto &barrier) { barrier->Draw(); });
-    std::ranges::for_each(m_aliens, [](auto &alien) { alien->Draw(); });
-    std::ranges::for_each(m_explosions, [](auto &explosion) { explosion.Draw(); });
-    std::ranges::for_each(m_alienLasers, [](auto &laser) { laser->Draw(); });
+    for (const auto &barrier: m_barriers) { barrier->Draw(); }
+    for (const auto &alien: m_aliens) { alien->Draw(); }
+    for (const auto &explosion: m_explosions) { explosion.Draw(); }
+    for (const auto &laser: m_alienLasers) { laser->Draw(); }
 }
 
 void
@@ -302,9 +322,20 @@ Game::CreateBarriers() {
     }
 }
 
+/**
+ * @brief Creates and positions a grid of alien entities within the game.
+ *
+ * This method performs the following operations:
+ * - Initializes each alien entity in the grid, assigning a type based on its row position.
+ * - Determines the maximum dimensions among all alien textures for uniform spacing.
+ * - Calculates the total grid size and positions it horizontally centered on the screen.
+ * - Arranges aliens within grid slots, ensuring each alien is centered in its respective slot.
+ *
+ * The positioning accounts for necessary gaps (horizontal and vertical spacing) between aliens,
+ * and aligns the grid a fixed distance from the top of the screen.
+ */
 void
 Game::CreateAliens() {
-    // First, create all aliens to determine their types and textures
     float maxAlienWidth = 0.0f;
     float maxAlienHeight = 0.0f;
 
@@ -326,11 +357,9 @@ Game::CreateAliens() {
 
     const float totalGridWidth = (AlienCols * maxAlienWidth) + ((AlienCols - 1) * horizontalSpacing);
 
-    // Center the grid on screen
     const float startX = (GetScreenWidth() - totalGridWidth) / 2.0f;
     const float startY = 110.0f; // Start 110 pixels from top
 
-    // Position each alien in its grid slot (centered within the max width)
     for (size_t i = 0; i < m_aliens.size(); i++) {
         const auto row = i / AlienCols;
         const auto col = i % AlienCols;
@@ -338,7 +367,6 @@ Game::CreateAliens() {
         const float slotX = startX + col * (maxAlienWidth + horizontalSpacing);
         const float slotY = startY + row * (maxAlienHeight + verticalSpacing);
 
-        // Center the alien within its allocated slot
         const Texture2D &tex = m_aliens[i]->GetTexture();
         const float centeredX = slotX + (maxAlienWidth - tex.width) / 2.0f;
         const float centeredY = slotY + (maxAlienHeight - tex.height) / 2.0f;
@@ -368,29 +396,30 @@ Game::LoadHighScore() {
 void
 Game::DrawUI() {
     // 10 is a magic number here, and I don't care.  It's just for positioning the frame around the view portal
-    DrawRectangleRoundedLinesEx( {10, 10, ScreenHeight - 20, ScreenWidth -20}, 0.18f, 20, 2, Colors::Yellow);
+    DrawRectangleRoundedLinesEx( {10, 10, ScreenHeight - 20, ScreenWidth - 20}, 0.18f, 20, 2, Colors::Yellow);
     DrawLineEx( {ScreenPadding / 2, GroundLevel}, {ScreenWidth - ScreenPadding / 2, GroundLevel}, 3, Colors::Yellow);
 
     if (m_gameOver) {
-        DrawTextEx(m_font, "GAME OVER", { 570, 740 }, 34, 2, Colors::Yellow);
+        DrawTextEx(m_font, "GAME OVER", { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
         const auto text = "PRESS SPACE TO PLAY AGAIN";
-        const auto size = MeasureTextEx(m_font, text, 34, 2);
-        DrawTextEx(m_font, "PRESS SPACE TO PLAY AGAIN", { ScreenWidth / 2 - size.x / 2, ScreenHeight / 2 - size.y / 2 }, 34, 2, Colors::Yellow);
+        const auto [sx, sy] = MeasureTextEx(m_font, text, FontSize, FontSpacing);
+        DrawTextEx(m_font, "PRESS SPACE TO PLAY AGAIN",
+            { ScreenWidth / 2 - sx / 2, ScreenHeight / 2 - sy / 2 }, FontSize, FontSpacing, Colors::Yellow);
     } else {
-        DrawTextEx(m_font, "LEVEL 01", { 570, 740 }, 34, 2, Colors::Yellow);
+        DrawTextEx(m_font, "LEVEL 01", { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
     }
 
     for (uint8_t i = 0; i < m_playerLives; i++) {
         DrawTextureV(m_player->GetTexture(), {m_player->GetTexture().width + 50.0f * i, 745}, WHITE);
     }
 
-    DrawTextEx(m_font, "SCORE", {50, 15}, 34, 2, Colors::Yellow);
+    DrawTextEx(m_font, "SCORE", {50, 15}, FontSize, FontSpacing, Colors::Yellow);
     const auto scoreText = std::format("{:05d}", m_score);
-    DrawTextEx(m_font, scoreText.c_str(), {50, 40}, 34, 2, Colors::Yellow);
+    DrawTextEx(m_font, scoreText.c_str(), {50, 40}, FontSize, FontSpacing, Colors::Yellow);
 
-    DrawTextEx(m_font, "HIGH-SCORE", {570, 15}, 34, 2, Colors::Yellow);
+    DrawTextEx(m_font, "HIGH-SCORE", {570, 15}, FontSize, FontSpacing, Colors::Yellow);
     const auto highScoreText = std::format("{:05d}", m_highScore);
-    DrawTextEx(m_font, highScoreText.c_str(), {660, 40}, 34, 2, Colors::Yellow);
+    DrawTextEx(m_font, highScoreText.c_str(), {660, 40}, FontSize, FontSpacing, Colors::Yellow);
 }
 
 void
@@ -399,17 +428,28 @@ Game::AddExplosion(const Explosion &explosion) {
 }
 
 void
-Game::AddAlienLaser(const std::shared_ptr<Laser>& laser) {
+Game::AddAlienLaser(const std::shared_ptr<AlienLaser>& laser) {
     m_alienLasers.push_back(laser);
 }
 
+/**
+ * @brief Updates the position and movement behavior of all aliens in the game.
+ *
+ * This method performs the following actions:
+ * - Iterates through all active aliens and updates their individual states.
+ * - Detects if any alien has moved beyond the horizontal screen boundaries.
+ * - Adjusts the movement direction of aliens if boundary detection is triggered.
+ * - Moves aliens downward collectively when required, adding a gap between rows.
+ * - Dynamically increases alien movement speed based on the number of remaining aliens.
+ *
+ * The logic ensures that aliens stay within the screen boundaries and progress downward as expected,
+ */
 void
 Game::MoveAliens() const {
     bool moveDown = false;
     float maxAlienHeight = 0;
     for (const auto &alien : m_aliens) {
         alien->Update();
-        // Check if the alien is off the screen
         if (alien->GetActive() && (alien->GetPosition().x < ScreenPadding / 2.0f ||
             alien->GetPosition().x + alien->GetTexture().width > GetScreenWidth() - ScreenPadding / 2)) {
             moveDown = true;
@@ -427,7 +467,6 @@ Game::MoveAliens() const {
 
     if (!moveDown) return;
 
-    // Move aliens down if any alien was off the screen in the above block
     maxAlienHeight += 10.0f;   // Gap between alien rows
     for (const auto &alien : m_aliens) {
         alien->SetSpeed(-alien->GetSpeed());

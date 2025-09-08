@@ -12,7 +12,7 @@ public:
     explicit CellRect(const Vector2 &position);
     ~CellRect() override = default;
 
-    void Draw() override;
+    void Draw() const override;
 
     [[nodiscard]] Rectangle GetRect() const override;
 

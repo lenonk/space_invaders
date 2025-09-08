@@ -3,6 +3,8 @@
 
 #include "Barrier.h"
 
+#include "Logger.h"
+
 namespace SpaceInvaders {
 
 Barrier::Barrier(const Vector2 position) : m_position(position) {
@@ -23,9 +25,8 @@ Barrier::~Barrier() {
     m_cellRects.clear();
 }
 
-
 void
-Barrier::Draw() {
+Barrier::Draw() const {
     std::ranges::for_each(m_cellRects, [](auto &cell) {
         if (!cell->GetActive()) { return; }
         cell->Draw();
@@ -33,11 +34,17 @@ Barrier::Draw() {
 }
 
 void
-Barrier::Damage(const Laser &laser) const {
-    const int8_t direction = laser.GetType() == Laser::Type::Player ? -1 : 1;
-    Damage(laser.GetPosition(), direction);
+Barrier::Damage(const PlayerLaser &laser) const {
+    Damage(laser.GetPosition(), -1);
 }
 
+void
+Barrier::Damage(const AlienLaser &laser) const {
+    Damage(laser.GetPosition(), 1);
+}
+
+// There are several techniques to make this function more efficient...use a dense array instead of a sparse array
+// and calculate index, use a map instead of a vector, etc...but I can't be arsed...
 void
 Barrier::Damage(const Vector2 pos, const int8_t direction) const {
     // Impact position relative to barrier grid
@@ -47,8 +54,8 @@ Barrier::Damage(const Vector2 pos, const int8_t direction) const {
     if (impactY < -10 || impactY > BarrierHeight + 10) { return; } // Ignore out of bounds
 
     // DEBUG: Print impact coordinates for alien lasers
-    std::printf("Alien laser impact: screen(%.1f, %.1f) -> barrier(%d, %d) | barrier_pos(%.1f, %.1f)\n",
-        pos.x, pos.y, impactX, impactY, m_position.x, m_position.y);
+    // LogDebug(std::format("Alien laser impact: screen({:.2f}, {:.2f}) -> barrier({}, {}) | barrier_pos({:.2f}, {:.2f})\n",
+    //     pos.x, pos.y, impactX, impactY, m_position.x, m_position.y));
 
     // Always destroy the directly hit cell first
     for (auto &cell : m_cellRects) {
@@ -63,7 +70,8 @@ Barrier::Damage(const Vector2 pos, const int8_t direction) const {
     constexpr int16_t targetDamage = 500;
     constexpr int16_t maxRadius = 15; // Maximum search radius
 
-    for (int16_t attempt = 0; attempt < targetDamage * 3; ++attempt) { // Try 3x to account for misses
+    int16_t destroyed = 0;
+    for (int16_t attempt = 0; destroyed < destroyed * 0.90f || attempt < targetDamage * 15; ++attempt) {
         // Generate random offset from impact point
         const int dx = GetRandomValue(-maxRadius, maxRadius);
         const int dy = GetRandomValue(-maxRadius, maxRadius);
@@ -72,7 +80,8 @@ Barrier::Damage(const Vector2 pos, const int8_t direction) const {
         const int16_t targetY = impactY + dy;
 
         // Skip if out of bounds
-        if (targetX < 0 || targetX >= BarrierWidth || targetY < 0 || targetY >= BarrierHeight) continue;
+        if (targetX < 0 || targetX >= BarrierWidth || targetY < 0 || targetY >= BarrierHeight)
+            continue;
 
         // Calculate distance from impact point
         const float distance = std::sqrt(static_cast<float>(dx * dx + dy * dy));
@@ -94,6 +103,7 @@ Barrier::Damage(const Vector2 pos, const int8_t direction) const {
             if (cell->GetActive() &&
                 static_cast<int16_t>(cell->GetPosition().x - m_position.x) == targetX &&
                 static_cast<int16_t>(cell->GetPosition().y - m_position.y) == targetY) {
+                destroyed++;
                 cell->SetActive(false);
                 break;
             }
@@ -107,7 +117,8 @@ Barrier::GetRect() const {
         m_position.x,
         m_position.y,
         static_cast<float>(BarrierWidth),
-        static_cast<float>(BarrierHeight)};
+        static_cast<float>(BarrierHeight)
+    };
 }
 
 }

@@ -26,7 +26,7 @@ Alien::Alien(const Vector2 position, const uint8_t type) {
 }
 
 void
-Alien::Draw() {
+Alien::Draw() const {
     if (!GetActive()) { return; }
 
     DrawTextureV(GetTexture(), m_position, WHITE);
@@ -56,7 +56,7 @@ Alien::FireLaser() const {
     }
 
     m_lastFireTime = time;
-    const auto l = std::make_shared<Laser>(Laser::Type::Alien);
+    const auto l = std::make_shared<AlienLaser>();
     l->SetPosition({
         m_position.x + (static_cast<float>(GetTexture().width) / 2.0f) - (l->GetTexture().width / 2.0f),
         m_position.y + GetTexture().height}

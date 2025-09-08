@@ -8,16 +8,6 @@ void
 Entity::Update() {
 }
 
-bool
-Entity::GetActive() const {
-   return m_active;
-}
-
-Vector2
-Entity::GetPosition() const {
-    return m_position;
-}
-
 Rectangle
 Entity::GetRect() const {
     if (m_active) {
@@ -33,12 +23,7 @@ Entity::GetRect() const {
 }
 
 Texture2D
-Entity::GetTexture() const {
-    return m_textures[m_textureIdx];
-}
-
-Texture2D &
-Entity::GetNextTexture() {
+Entity::GetNextTexture() const {
     m_textureIdx++;
     if (m_textureIdx >= m_textures.size()) {
         m_textureIdx = 0;
@@ -46,38 +31,13 @@ Entity::GetNextTexture() {
     return m_textures[m_textureIdx];
 }
 
-void
-Entity::SetPosition(const Vector2 &position) {
-    m_position = position;
-}
-
-void
-Entity::SetActive(const bool active) {
-    m_active = active;
-}
-
-Sound &
-Entity::GetSound() {
-    return m_sounds[m_soundIdx];
-}
-
-Sound &
-Entity::GetNextSound() {
+Sound
+Entity::GetNextSound() const {
     m_soundIdx++;
     if (m_soundIdx >= m_sounds.size()) {
         m_soundIdx = 0;
     }
     return m_sounds[m_soundIdx];
-}
-
-bool
-Entity::CollidesWith(const Rectangle &other) {
-    return CheckCollisionRecs(GetRect(), other);
-}
-
-bool
-Entity::CollidesWith(Entity &other) {
-    return CollidesWith(other.GetRect());
 }
 
 }

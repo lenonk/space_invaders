@@ -18,10 +18,6 @@ public:
     static constexpr int32_t ScreenHeight = 800;
     static constexpr float GroundLevel = ScreenHeight - ScreenPadding * 1.5;
 
-    static constexpr uint8_t AlienRows = 5;
-    static constexpr uint8_t AlienCols = 11;
-
-    static constexpr uint8_t NumBarriers = 4;
     static inline auto GameResources = std::make_unique<ResourceManager>();
 
     Game();
@@ -29,7 +25,7 @@ public:
 
     void Run();
 
-    void Draw();
+    void Draw() const;
     void DrawUI();
 
     void MoveAliens() const;
@@ -53,8 +49,16 @@ public:
     [[nodiscard]] uint8_t AliensLeft() const;
 
     static void AddExplosion(const Explosion &explosion);
-    static void AddAlienLaser(const std::shared_ptr<Laser>& laser);
+    static void AddAlienLaser(const std::shared_ptr<AlienLaser>& laser);
     static bool GamePaused() { return m_paused; }
+
+private: // Constants
+    static constexpr uint8_t AlienRows      = 5;
+    static constexpr uint8_t AlienCols      = 11;
+    static constexpr uint8_t NumBarriers    = 4;
+
+    const uint8_t FontSize      = 34;
+    const uint8_t FontSpacing   = 2;
 
 private:
     bool m_gameOver         {false};
@@ -69,12 +73,11 @@ private:
     std::unique_ptr<SpaceShip> m_player      {};
     std::unique_ptr<MysteryShip> m_mystery   {};
 
-    std::array<std::shared_ptr<Barrier>, NumBarriers> m_barriers;
-    std::array<std::shared_ptr<Alien>, AlienRows * AlienCols> m_aliens {};
+    std::array<std::shared_ptr<Barrier>, NumBarriers> m_barriers        {};
+    std::array<std::shared_ptr<Alien>, AlienRows * AlienCols> m_aliens  {};
 
-
-    inline static std::vector<Explosion> m_explosions   {};
-    inline static std::vector<std::shared_ptr<Laser>> m_alienLasers      {};
+    inline static std::vector<Explosion> m_explosions                       {};
+    inline static std::vector<std::shared_ptr<AlienLaser>> m_alienLasers    {};
 };
 
 }

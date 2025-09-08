@@ -20,7 +20,7 @@ public:
     explicit Explosion(Type type, const Vector2 &position);
     ~Explosion() override = default;
 
-    void Draw() override;
+    void Draw() const override;
 
     [[nodiscard]] bool IsExpired() const;
 
