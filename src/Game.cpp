@@ -17,10 +17,15 @@ Game::Game() {
 
     InitAudioDevice();
 
-    GameResources->LoadTextures("Graphics");
-    GameResources->LoadSounds("Sounds/Effects");
-    GameResources->LoadMusic("Sounds/Music");
-    GameResources->LoadFonts("Fonts");
+    try {
+        GameResources->LoadTextures("Graphics");
+        GameResources->LoadSounds("Sounds/Effects");
+        GameResources->LoadMusic("Sounds/Music");
+        GameResources->LoadFonts("Fonts");
+    } catch (const std::runtime_error &e) {
+        LogError(e.what());
+        std::terminate();
+	}
 
     LoadHighScore();
 

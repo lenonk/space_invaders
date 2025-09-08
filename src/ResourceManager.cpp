@@ -25,8 +25,7 @@ ResourceManager::LoadResources(const std::string &path, const std::string &exten
     const fs::path dir(path);
 
     if (!fs::exists(dir)) {
-        std::println(std::cerr, "WARNING: Resource directory does not exist: {}", path);
-        return;
+		throw std::runtime_error("Resource directory does not exist: " + path);
     }
 
     for (const fs::directory_entry &entry : fs::recursive_directory_iterator(dir)) {
