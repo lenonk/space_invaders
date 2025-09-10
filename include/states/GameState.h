@@ -18,6 +18,11 @@ public:
     // Optional callbacks
     virtual void Pause(Game* game) {}
     virtual void Resume(Game* game) {}
+
+protected:
+    uint8_t m_textLarge     {64};
+    uint8_t m_textMedium    {34};
+    uint8_t m_textSmall     {24};
 };
 
 }

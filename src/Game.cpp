@@ -61,6 +61,7 @@ Game::Run() {
     m_music = music.value();
 
     StateManager->PushState(std::make_unique<MenuState>(), this);
+
     while (!WindowShouldClose() && !m_shouldExit && !StateManager->IsEmpty()) {
         UpdateMusicStream(m_music);
 
@@ -74,15 +75,29 @@ Game::Run() {
     }
 }
 
-auto
-Game::GetAliensLeft() const {
-    uint8_t count = 0;
-    for (const auto &alien : m_aliens) { if (alien->GetActive()) { ++count; }}
-    return count;
-}
-
 void
-Game::Update() const {
+Game::Update() {
+    if (GetAliensLeft() <= 0) {
+        // TODO:  Make this a state. Implement some sort of delay, and possibly aliens marching in animation
+        m_level++;
+        m_alienLasers.clear();
+        m_explosions.clear();
+
+        for (auto &barrier: m_barriers) { barrier.reset(); }
+        for (auto &alien: m_aliens) { alien.reset(); }
+
+        try {
+            m_player = std::make_unique<SpaceShip>();
+            m_mystery = std::make_unique<MysteryShip>();
+
+            CreateAliens();
+            CreateBarriers();
+        } catch (const std::runtime_error &e) {
+            LogError(e.what());
+            std::terminate();
+        }
+    }
+
     m_mystery->Update();
 
     for (const auto &laser : m_alienLasers) { laser->Update(); }
@@ -129,11 +144,11 @@ Game::Draw() const {
 
 void
 Game::DrawUI() {
-    // 10 is a magic number here, and I don't care.  It's just for positioning the frame around the view portal
+    // 10 is a magic number here, and I don't care.  It's just for positioning the frame around the view port
     DrawRectangleRoundedLinesEx( {10, 10, ScreenHeight - 20, ScreenWidth - 20}, 0.18f, 20, 2, Colors::Yellow);
     DrawLineEx( {ScreenPadding / 2, GroundLevel}, {ScreenWidth - ScreenPadding / 2, GroundLevel}, 3, Colors::Yellow);
 
-    DrawTextEx(m_font, "LEVEL 01", { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
+    DrawTextEx(m_font, std::format("LEVEL {:02d}", m_level).c_str(), { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
 
     for (uint8_t i = 0; i < m_playerLives; i++) {
         DrawTextureV(m_player->GetTexture(), {m_player->GetTexture().width + 50.0f * i, 745}, WHITE);
@@ -149,7 +164,7 @@ Game::DrawUI() {
 }
 
 void
-Game::HandleInput() const {
+Game::HandleInput() {
     if (m_player) {
         if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
             m_player->MoveLeft();
@@ -368,7 +383,7 @@ Game::CreateAliens() {
     const float totalGridWidth = (AlienCols * maxAlienWidth) + ((AlienCols - 1) * horizontalSpacing);
 
     const float startX = (GetScreenWidth() - totalGridWidth) / 2.0f;
-    const float startY = 110.0f; // Start 110 pixels from top
+    const float startY = 110.0f + maxAlienHeight * m_level - 1;
 
     for (size_t i = 0; i < m_aliens.size(); i++) {
         const auto row = i / AlienCols;
@@ -383,6 +398,8 @@ Game::CreateAliens() {
 
         m_aliens[i]->Move({ centeredX, centeredY });
     }
+
+    Alien::ResetSpeed();
 }
 
 void
@@ -439,6 +456,8 @@ Game::MoveAliens() const {
         maxAlienHeight = std::max(maxAlienHeight, static_cast<float>(alien->GetTexture().height));
     }
 
+    // Bug fix.  This only works once.  If you reset the aliens after destroying them all, they will never
+    // speed up again because the trigger is never hit.
     const auto aliensLeft = GetAliensLeft();
     static auto lastTrigger = aliensLeft;
     if (aliensLeft > 0 && (aliensLeft / lastTrigger) * 100 < 90) {

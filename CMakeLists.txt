@@ -31,6 +31,7 @@ set(HDRS
         include/states/MenuState.h
         include/states/PausedState.h
         include/states/PlayingState.h
+        include/states/QuitState.h
 )
 
 set(SRCS
@@ -51,6 +52,7 @@ set(SRCS
         src/states/MenuState.cpp
         src/states/PausedState.cpp
         src/states/PlayingState.cpp
+        src/states/QuitState.cpp
 )
 
 add_executable(space_invaders ${HDRS} ${SRCS})

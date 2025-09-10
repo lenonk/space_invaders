@@ -21,10 +21,10 @@ void MenuState::Draw(Game *game) {
     
     // Draw title
     const auto title = "SPACE INVADERS";
-    auto [mx, my] = MeasureTextEx(font, title, 64, 2);
+    auto [mx, my] = MeasureTextEx(font, title, m_textLarge, 2);
     DrawTextEx(font, title, 
               {Game::ScreenWidth / 2 - mx / 2, 200},
-              64, 2, Colors::Yellow);
+              m_textLarge, 2, Colors::Yellow);
     
     // Draw menu options
     for (int i = 0; i < MenuOptionCount; ++i) {
@@ -32,18 +32,18 @@ void MenuState::Draw(Game *game) {
         constexpr float startY = 350.0f;
         const char *options[] = {"PLAY", "HIGH SCORES", "QUIT"};
         const auto color = (static_cast<int>(m_selectedOption) == i) ? Colors::Yellow : WHITE;
-        auto [tx, ty] = MeasureTextEx(font, options[i], 34, 2);
+        auto [tx, ty] = MeasureTextEx(font, options[i], m_textMedium, 2);
         DrawTextEx(font, options[i], 
                   {Game::ScreenWidth / 2 - tx / 2, startY + i * spacing},
-                  34, 2, color);
+                  m_textMedium, 2, color);
     }
     
     // Instructions
     const auto instruction = "USE ARROW KEYS TO NAVIGATE, SPACE TO SELECT";
-    auto [tx, ty] = MeasureTextEx(font, instruction, 20, 2);
+    auto [tx, ty] = MeasureTextEx(font, instruction, m_textSmall, 2);
     DrawTextEx(font, instruction, 
               {Game::ScreenWidth / 2 - tx / 2, Game::ScreenHeight - 100},
-              20, 2, GRAY);
+              m_textSmall, 2, GRAY);
 }
 
 void MenuState::HandleInput(Game *game) {

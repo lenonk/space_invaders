@@ -2,6 +2,7 @@
 #include "states/PlayingState.h"
 #include "states/GameOverState.h"
 #include "states/PausedState.h"
+#include "states/QuitState.h"
 #include "Colors.h"
 
 namespace SpaceInvaders {
@@ -34,7 +35,9 @@ void PlayingState::HandleInput(Game *game) {
     if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
         Game::StateManager->PushState(std::make_unique<PausedState>(), game);
     }
-    
+    if (IsKeyDown(KEY_Q)) {
+        Game::StateManager->PushState(std::make_unique<QuitState>(), game);
+    }
     game->HandleInput();
 }
 

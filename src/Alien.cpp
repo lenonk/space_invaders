@@ -50,7 +50,7 @@ void
 Alien::FireLaser() const {
     const auto time = GetTime();
 
-    const double fireDelay = static_cast<double>(GetRandomValue(AlienMinFireSpeed, AlienMaxFireSpeed)) / 1000.0f;
+    const double fireDelay = static_cast<double>(GetRandomValue(MinFireSpeed, MaxFireSpeed)) / 1000.0f;
     if (time - m_lastFireTime < fireDelay) {
         return;
     }

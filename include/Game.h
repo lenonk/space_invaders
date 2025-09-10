@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <array>
 
@@ -30,12 +31,12 @@ public:
     void Draw() const;
     void DrawUI();
     void MoveAliens() const;
-    void Update() const;
+    void Update();
     void UpdateVisualEffects() const;
     void Reset();
     void DecrementPlayerLives();
     void IncrementScore(int16_t score);
-    void HandleInput() const;
+    void HandleInput();
 
     void CheckCollisions();
     void CheckPlayerCollisions();
@@ -53,7 +54,7 @@ public:
     void SetShouldExit(const bool shouldExit) { m_shouldExit = shouldExit; }
 
     [[nodiscard]] auto IsGameOver() const { return m_gameOver; }
-    [[nodiscard]] auto GetAliensLeft() const;
+    [[nodiscard]] auto GetAliensLeft() const { return std::ranges::count_if(m_aliens, [](const auto &alien) { return alien->GetActive(); }); }
     [[nodiscard]] auto GetScore() const { return m_score; }
     [[nodiscard]] auto GetHighScore() const { return m_highScore; }
     [[nodiscard]] auto &GetFont() const { return m_font; }
@@ -73,6 +74,7 @@ private: // Constants
 private:
     bool m_gameOver         {false};
     bool m_shouldExit       {false};
+    uint8_t m_level         {1};
     uint8_t m_playerLives   {PlayerLives};
     uint32_t m_score        {0};
     uint32_t m_highScore    {0};
