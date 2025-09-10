@@ -7,8 +7,6 @@
 
 namespace SpaceInvaders {
 
-namespace fs = std::filesystem;
-
 ResourceManager::~ResourceManager() {
     using namespace std::ranges;
 
@@ -22,10 +20,11 @@ template<RaylibResource ResourceType>
 void
 ResourceManager::LoadResources(const std::string &path, const std::string &extension,
                                    std::map<std::string, ResourceType> &cache) {
+    namespace fs = std::filesystem;
     const fs::path dir(path);
 
     if (!fs::exists(dir)) {
-		throw std::runtime_error("Resource directory does not exist: " + path);
+        throw std::runtime_error("Resource directory does not exist: " + path);
     }
 
     for (const fs::directory_entry &entry : fs::recursive_directory_iterator(dir)) {

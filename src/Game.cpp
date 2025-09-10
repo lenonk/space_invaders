@@ -9,6 +9,7 @@
 #include "Logger.h"
 #include "MysteryShip.h"
 #include "SpaceShip.h"
+#include "GameStates.h"
 
 namespace SpaceInvaders {
 
@@ -25,10 +26,9 @@ Game::Game() {
     } catch (const std::runtime_error &e) {
         LogError(e.what());
         std::terminate();
-	}
+    }
 
     LoadHighScore();
-
     SetRandomSeed((int32_t)GetTime());
 }
 

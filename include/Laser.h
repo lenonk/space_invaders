@@ -25,7 +25,7 @@ protected:
     virtual bool IsOutOfBounds() const;
 };
 
-// Player laser implementation
+// Player laser
 class PlayerLaser final : public Laser {
 public:
     static constexpr float Speed = -520.0f;
@@ -37,7 +37,7 @@ protected:
     void LoadResources() override;
 };
 
-// Alien laser implementation
+// Alien laser
 class AlienLaser final : public Laser {
 public:
     static constexpr float Speed = 420.0f;

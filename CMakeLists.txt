@@ -14,6 +14,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 set(HDRS
+        include/Logger.h
         include/Game.h
         include/SpaceShip.h
         include/Laser.h
@@ -24,6 +25,9 @@ set(HDRS
         include/CellRect.h
         include/Entity.h
         include/ResourceManager.h
+        include/GameState.h
+        include/GameStateManager.h
+        include/GameStates.h
 )
 
 set(SRCS
@@ -38,7 +42,8 @@ set(SRCS
         src/Entity.cpp
         src/ResourceManager.cpp
         src/CellRect.cpp
-        include/Logger.h
+        src/GameStateManager.cpp
+        src/GameStates.cpp
 )
 
 add_executable(space_invaders ${HDRS} ${SRCS})
