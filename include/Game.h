@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 #include <array>
 
@@ -8,7 +9,7 @@
 #include "Barrier.h"
 #include "Explosion.h"
 #include "ResourceManager.h"
-#include "GameStateManager.h"
+#include "states/GameStateManager.h"
 
 namespace SpaceInvaders {
 
@@ -19,8 +20,8 @@ public:
     static constexpr int32_t ScreenHeight = 800;
     static constexpr float GroundLevel = ScreenHeight - ScreenPadding * 1.5;
 
-    static inline auto GameResources    = std::make_unique<ResourceManager>();
-    static inline auto GameStateManager = std::make_unique<GameStateManager>();
+    static inline auto Resources    = std::make_unique<ResourceManager>();
+    static inline auto StateManager = std::make_unique<GameStateManager>();
 
     Game();
     ~Game();
@@ -30,10 +31,11 @@ public:
     void DrawUI();
     void MoveAliens() const;
     void Update() const;
+    void UpdateVisualEffects() const;
     void Reset();
     void DecrementPlayerLives();
     void IncrementScore(int16_t score);
-    void HandleInput();
+    void HandleInput() const;
 
     void CheckCollisions();
     void CheckPlayerCollisions();
@@ -51,7 +53,7 @@ public:
     void SetShouldExit(const bool shouldExit) { m_shouldExit = shouldExit; }
 
     [[nodiscard]] auto IsGameOver() const { return m_gameOver; }
-    [[nodiscard]] auto AliensLeft() const;
+    [[nodiscard]] auto GetAliensLeft() const;
     [[nodiscard]] auto GetScore() const { return m_score; }
     [[nodiscard]] auto GetHighScore() const { return m_highScore; }
     [[nodiscard]] auto &GetFont() const { return m_font; }

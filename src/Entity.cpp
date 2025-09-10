@@ -22,7 +22,7 @@ Entity::GetRect() const {
     return {};
 }
 
-Texture2D
+const Texture2D &
 Entity::GetNextTexture() const {
     m_textureIdx++;
     if (m_textureIdx >= m_textures.size()) {
@@ -31,7 +31,7 @@ Entity::GetNextTexture() const {
     return m_textures[m_textureIdx];
 }
 
-Sound
+const Sound &
 Entity::GetNextSound() const {
     m_soundIdx++;
     if (m_soundIdx >= m_sounds.size()) {

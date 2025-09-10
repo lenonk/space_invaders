@@ -25,9 +25,12 @@ set(HDRS
         include/CellRect.h
         include/Entity.h
         include/ResourceManager.h
-        include/GameState.h
-        include/GameStateManager.h
-        include/GameStates.h
+        include/states/GameStateManager.h
+        include/states/GameOverState.h
+        include/states/HighScoreState.h
+        include/states/MenuState.h
+        include/states/PausedState.h
+        include/states/PlayingState.h
 )
 
 set(SRCS
@@ -42,8 +45,12 @@ set(SRCS
         src/Entity.cpp
         src/ResourceManager.cpp
         src/CellRect.cpp
-        src/GameStateManager.cpp
-        src/GameStates.cpp
+        src/states/GameStateManager.cpp
+        src/states/GameOverState.cpp
+        src/states/HighScoreState.cpp
+        src/states/MenuState.cpp
+        src/states/PausedState.cpp
+        src/states/PlayingState.cpp
 )
 
 add_executable(space_invaders ${HDRS} ${SRCS})
@@ -59,30 +66,8 @@ if(WIN32)
     )
 
     target_link_directories(space_invaders PRIVATE ${RAYLIB_PATH}/lib)
-
-    #set_target_properties(space_invaders PROPERTIES
-    #    LINK_FLAGS "-static-libgcc -static-libstdc++ -static"
-    #)
-
-    #target_link_libraries(space_invaders
-    #        -Wl,-Bstatic
-    #        raylib
-    #        -Wl,-Bdynamic
-    #        opengl32 gdi32 winmm
-    #)
     target_link_libraries(space_invaders raylib opengl32 gdi32 winmm)
 else()
-    # Linux build
-#    set_target_properties(space_invaders PROPERTIES
-#        LINK_FLAGS "-static-libgcc -static-libstdc++"
-#    )
-
-#    target_link_libraries(space_invaders
-#            -Wl,-Bstatic
-#            raylib
-#            -Wl,-Bdynamic
-#            m dl pthread
-#    )
     target_link_libraries(space_invaders raylib)
     target_include_directories(space_invaders PRIVATE include)
 endif()

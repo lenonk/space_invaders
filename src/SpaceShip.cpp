@@ -11,7 +11,7 @@
 
 namespace SpaceInvaders {
 SpaceShip::SpaceShip() {
-    const auto texture = Game::GameResources->GetTexture("spaceship.png");
+    const auto texture = Game::Resources->GetTexture("spaceship.png");
     assert(texture.has_value());
     m_textures.push_back(texture.value());
 
@@ -34,13 +34,6 @@ SpaceShip::Update() {
     if (m_invulnerable && GetTime() - m_invulnerableTimer > InvulnerableTime) {
         m_invulnerable = false;
     }
-
-    if (IsKeyDown(KEY_LEFT))
-        MoveLeft();
-    else if (IsKeyDown(KEY_RIGHT))
-        MoveRight();
-    else if (IsKeyDown(KEY_SPACE))
-        FireLaser();
 }
 
 void
@@ -49,7 +42,7 @@ SpaceShip::Draw() const {
 
     for (const auto &laser : m_lasers) { laser.Draw(); }
 
-    if (Game::GamePaused() || !m_invulnerable || (int64_t)(GetTime() * 10) % 2 == 0)
+    if (!m_invulnerable || static_cast<int64_t>(GetTime() * 10) % 2 == 0)
         DrawTextureV(GetTexture(), m_position, WHITE);
 }
 

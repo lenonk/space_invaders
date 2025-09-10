@@ -14,7 +14,7 @@ public:
     void Draw() const override;
     void Explode(bool createExplosion = true);
 
-    [[nodiscard]] Vector2 GetPosition() const override;
+    [[nodiscard]] const Vector2 &GetPosition() const override;
 
 protected:
     float m_speed               {0.0f};
@@ -46,10 +46,11 @@ public:
     AlienLaser();
     ~AlienLaser() override = default;
 
-    [[nodiscard]] Vector2 GetPosition() const override;
+    [[nodiscard]] const Vector2 &GetPosition() const override;
 
 protected:
     void LoadResources() override;
+    mutable Vector2 m_correctedPosition {};
 };
 
 }

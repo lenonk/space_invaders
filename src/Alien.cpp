@@ -17,7 +17,7 @@ Alien::Alien(const Vector2 position, const uint8_t type) {
     m_position = position;
 
     for (const auto i : std::views::iota(1, 3)) {
-        auto texture = Game::GameResources->GetTexture(std::format("alien_{}_ani_{}.png", std::to_string(type), i));
+        auto texture = Game::Resources->GetTexture(std::format("alien_{}_ani_{}.png", std::to_string(type), i));
         if (!texture.has_value()) {
             throw std::runtime_error(std::format("Failed to load alien texture: alien_{}_ani_{}.png", type, i));
         }

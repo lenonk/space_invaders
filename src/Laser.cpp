@@ -18,7 +18,7 @@ Laser::Update() {
     }
 
     if (const auto time = GetTime(); time - m_lastTextureSwapTime > m_textureSwapTime) {
-        GetNextTexture();
+        GetNextTexture(); // Don't need to store the actual texture, just increment the texture index
         m_lastTextureSwapTime = time;
     }
     m_position.y += m_speed * GetFrameTime();
@@ -42,14 +42,8 @@ Laser::Explode(const bool createExplosion) {
     Game::AddExplosion(e);
 }
 
-Vector2
-Laser::GetPosition() const {
-    // if (m_type == Type::Alien) {
-    //     return {m_position.x, m_position.y + GetTexture().height};
-    // }
-
-    return m_position;
-}
+const Vector2 &
+Laser::GetPosition() const { return m_position; }
 
 bool
 Laser::IsOutOfBounds() const {
@@ -65,13 +59,13 @@ PlayerLaser::PlayerLaser() {
 
 void
 PlayerLaser::LoadResources() {
-    const auto texture = Game::GameResources->GetTexture("player_laser_1.png");
+    const auto texture = Game::Resources->GetTexture("player_laser_1.png");
     if (!texture.has_value()) {
         throw std::runtime_error("Failed to load player laser texture");
     }
     m_textures.push_back(texture.value());
 
-    const auto sound = Game::GameResources->GetSound("laser.ogg");
+    const auto sound = Game::Resources->GetSound("laser.ogg");
     if (!sound.has_value()) {
         throw std::runtime_error("Failed to load player laser sound");
     }
@@ -86,25 +80,28 @@ AlienLaser::AlienLaser() {
     PlaySound(Entity::GetNextSound());
 }
 
-void AlienLaser::LoadResources() {
+void
+AlienLaser::LoadResources() {
     for (const auto i : std::views::iota(1, 5)) {
-        auto texture = Game::GameResources->GetTexture(std::format("alien_laser_{}.png", std::to_string(i)));
+        auto texture = Game::Resources->GetTexture(std::format("alien_laser_{}.png", std::to_string(i)));
         if (!texture.has_value()) {
             throw std::runtime_error(std::format("Failed to load alien laser texture: alien_laser_{}.png", i));
         }
         m_textures.push_back(texture.value());
     }
 
-    const auto sound = Game::GameResources->GetSound("laser.ogg");
+    const auto sound = Game::Resources->GetSound("laser.ogg");
     if (!sound.has_value()) {
         throw std::runtime_error("Failed to load alien laser sound");
     }
     m_sounds.push_back(sound.value());
 }
 
-Vector2 AlienLaser::GetPosition() const {
+const Vector2 &
+AlienLaser::GetPosition() const {
     // Alien lasers have different position calculation
-    return {m_position.x, m_position.y + GetTexture().height};
+    m_correctedPosition = {m_position.x, m_position.y + GetTexture().height};
+    return m_correctedPosition;
 }
 
 }

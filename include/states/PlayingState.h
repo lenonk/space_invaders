@@ -1,0 +1,17 @@
+#pragma once
+#include "GameState.h"
+
+namespace SpaceInvaders {
+
+class PlayingState final : public GameState {
+public:
+    void Enter(Game *game) override;
+    void Exit(Game *game) override;
+    void Update(Game *game) override;
+    void Draw(Game *game) override;
+    void HandleInput(Game *game) override;
+    void Pause(Game *game) override;
+    void Resume(Game *game) override;
+};
+
+}

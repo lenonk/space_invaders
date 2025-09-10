@@ -3,38 +3,37 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <ranges>
 
 #include "Colors.h"
 #include "Logger.h"
 #include "MysteryShip.h"
 #include "SpaceShip.h"
-#include "GameStates.h"
+#include "states/MenuState.h"
 
 namespace SpaceInvaders {
 
 Game::Game() {
     InitWindow(ScreenWidth, ScreenHeight, "Raylib Space Invaders!");
-
     InitAudioDevice();
+    SetExitKey(KEY_NULL);
 
     try {
-        GameResources->LoadTextures("Graphics");
-        GameResources->LoadSounds("Sounds/Effects");
-        GameResources->LoadMusic("Sounds/Music");
-        GameResources->LoadFonts("Fonts");
+        Resources->LoadTextures("Graphics");
+        Resources->LoadSounds("Sounds/Effects");
+        Resources->LoadMusic("Sounds/Music");
+        Resources->LoadFonts("Fonts");
     } catch (const std::runtime_error &e) {
         LogError(e.what());
         std::terminate();
     }
 
     LoadHighScore();
-    SetRandomSeed((int32_t)GetTime());
+    SetRandomSeed(static_cast<int32_t>(GetTime()));
 }
 
 Game::~Game() {
     SaveHighScore();
-    GameResources.reset(); // Resources need to be unloaded before CloseWindow() is called
+    Resources.reset(); // Resources need to be unloaded before CloseWindow() is called
     m_player.reset();
     m_mystery.reset();
     m_alienLasers.clear();
@@ -47,51 +46,36 @@ Game::~Game() {
 
 void
 Game::Run() {
-    const auto f = GameResources->GetFont("monogram.ttf");
+    const auto f = Resources->GetFont("monogram.ttf");
     if (!f.has_value()) {
         LogError("Unable to load font: monogram.ttf");
         return;
     }
     m_font = f.value();
 
-    const auto music = GameResources->GetMusic("music.ogg");
+    const auto music = Resources->GetMusic("music.ogg");
     if (!music.has_value()) {
         LogError("Unable to load music: music.ogg");
         return;
     }
     m_music = music.value();
 
-    try {
-        CreateAliens();
-        CreateBarriers();
+    StateManager->PushState(std::make_unique<MenuState>(), this);
+    while (!WindowShouldClose() && !m_shouldExit && !StateManager->IsEmpty()) {
+        UpdateMusicStream(m_music);
 
-        m_player = std::make_unique<SpaceShip>();
-        m_mystery = std::make_unique<MysteryShip>();
+        StateManager->HandleInput(this);
+        StateManager->Update(this);
 
-        PlayMusicStream(m_music);
-
-        while (!WindowShouldClose()) {
-            UpdateMusicStream(m_music);
-            HandleInput();
-            BeginDrawing();
-            ClearBackground(Colors::Gray);
-            DrawUI();
-
-            if (!m_paused) {
-                Update();
-                CheckCollisions();
-            }
-
-            Draw();
-            EndDrawing();
-        }
-    } catch (const std::runtime_error &e) {
-        LogError(e.what());
+        BeginDrawing();
+        ClearBackground(Colors::Gray);
+        StateManager->Draw(this);
+        EndDrawing();
     }
 }
 
-uint8_t
-Game::AliensLeft() const {
+auto
+Game::GetAliensLeft() const {
     uint8_t count = 0;
     for (const auto &alien : m_aliens) { if (alien->GetActive()) { ++count; }}
     return count;
@@ -101,10 +85,8 @@ void
 Game::Update() const {
     m_mystery->Update();
 
-    for (const auto laser : m_alienLasers) { laser->Update(); }
-
-    std::erase_if(m_alienLasers, [](auto& laser) { return !laser->GetActive(); });
-    std::erase_if(m_explosions, [](const auto &explosion) { return explosion.IsExpired(); });
+    for (const auto &laser : m_alienLasers) { laser->Update(); }
+    UpdateVisualEffects();
 
     // ***** Everything below here only happens if the game is not over.
     if (m_gameOver) { return; }
@@ -125,6 +107,89 @@ Game::Update() const {
     if (chosen != -1) {
         m_aliens[chosen]->FireLaser();
     }
+}
+
+void
+Game::UpdateVisualEffects() const {
+    std::erase_if(m_alienLasers, [](auto& laser) { return !laser->GetActive(); });
+    std::erase_if(m_explosions, [](const auto &explosion) { return explosion.IsExpired(); });
+}
+
+void
+Game::Draw() const {
+    if (m_player) m_player->Draw();
+    if (m_mystery) m_mystery->Draw();
+
+    // Draw all the things...
+    for (const auto &barrier: m_barriers) { barrier->Draw(); }
+    for (const auto &alien: m_aliens) { alien->Draw(); }
+    for (const auto &explosion: m_explosions) { explosion.Draw(); }
+    for (const auto &laser: m_alienLasers) { laser->Draw(); }
+}
+
+void
+Game::DrawUI() {
+    // 10 is a magic number here, and I don't care.  It's just for positioning the frame around the view portal
+    DrawRectangleRoundedLinesEx( {10, 10, ScreenHeight - 20, ScreenWidth - 20}, 0.18f, 20, 2, Colors::Yellow);
+    DrawLineEx( {ScreenPadding / 2, GroundLevel}, {ScreenWidth - ScreenPadding / 2, GroundLevel}, 3, Colors::Yellow);
+
+    DrawTextEx(m_font, "LEVEL 01", { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
+
+    for (uint8_t i = 0; i < m_playerLives; i++) {
+        DrawTextureV(m_player->GetTexture(), {m_player->GetTexture().width + 50.0f * i, 745}, WHITE);
+    }
+
+    DrawTextEx(m_font, "SCORE", {50, 15}, FontSize, FontSpacing, Colors::Yellow);
+    const auto scoreText = std::format("{:05d}", m_score);
+    DrawTextEx(m_font, scoreText.c_str(), {50, 40}, FontSize, FontSpacing, Colors::Yellow);
+
+    DrawTextEx(m_font, "HIGH-SCORE", {570, 15}, FontSize, FontSpacing, Colors::Yellow);
+    const auto highScoreText = std::format("{:05d}", m_highScore);
+    DrawTextEx(m_font, highScoreText.c_str(), {660, 40}, FontSize, FontSpacing, Colors::Yellow);
+}
+
+void
+Game::HandleInput() const {
+    if (m_player) {
+        if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
+            m_player->MoveLeft();
+        }
+        if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
+            m_player->MoveRight();
+        }
+        if (IsKeyDown(KEY_SPACE)) {
+            m_player->FireLaser();
+        }
+    }
+}
+
+void
+Game::Reset() {
+    m_gameOver = false;
+    m_score = 0;
+    m_playerLives = PlayerLives;
+    m_alienLasers.clear();
+    m_explosions.clear();
+
+    for (auto &barrier: m_barriers) { barrier.reset(); }
+    for (auto &alien: m_aliens) { alien.reset(); }
+
+    try {
+        m_player = std::make_unique<SpaceShip>();
+        m_mystery = std::make_unique<MysteryShip>();
+
+        CreateAliens();
+        CreateBarriers();
+    } catch (const std::runtime_error &e) {
+        LogError(e.what());
+        std::terminate();
+    }
+}
+
+void
+Game::CheckCollisions() {
+    CheckPlayerCollisions();
+    CheckAlienCollisions();
 }
 
 /**
@@ -257,66 +322,6 @@ Game::IncrementScore(const int16_t score) {
 }
 
 void
-Game::Reset() {
-    m_gameOver = false;
-    m_score = 0;
-    m_alienLasers.clear();
-    m_explosions.clear();
-
-    for (auto &barrier: m_barriers) { barrier.reset(); }
-    for (auto &alien: m_aliens) { alien.reset(); }
-
-    try {
-        m_player = std::make_unique<SpaceShip>();
-        m_mystery = std::make_unique<MysteryShip>();
-
-        m_playerLives = 3;
-
-        CreateAliens();
-        CreateBarriers();
-    } catch (const std::runtime_error &e) {
-        LogError(e.what());
-        std::terminate();
-    }
-}
-
-void
-Game::CheckCollisions() {
-    if (m_paused) { return; }
-    CheckPlayerCollisions();
-    CheckAlienCollisions();
-}
-
-void
-Game::Draw() const {
-    if (m_player)
-        m_player->Draw();
-
-    if (m_mystery)
-        m_mystery->Draw();
-
-    // Draw all the things...
-    for (const auto &barrier: m_barriers) { barrier->Draw(); }
-    for (const auto &alien: m_aliens) { alien->Draw(); }
-    for (const auto &explosion: m_explosions) { explosion.Draw(); }
-    for (const auto &laser: m_alienLasers) { laser->Draw(); }
-}
-
-void
-Game::HandleInput() {
-    if (m_gameOver && IsKeyPressed(KEY_SPACE)) {
-        Reset();
-    } else if (IsKeyPressed(KEY_P)) {
-        m_paused = !m_paused;
-        if (m_paused) {
-            PauseMusicStream(m_music);
-        } else {
-            PlayMusicStream(m_music);
-        }
-    }
-}
-
-void
 Game::CreateBarriers() {
     constexpr int16_t barrierWidth = Barrier::BarrierWidth;
     const float gap = (GetScreenWidth() - (4 * barrierWidth)) / 5;
@@ -399,35 +404,6 @@ Game::LoadHighScore() {
 }
 
 void
-Game::DrawUI() {
-    // 10 is a magic number here, and I don't care.  It's just for positioning the frame around the view portal
-    DrawRectangleRoundedLinesEx( {10, 10, ScreenHeight - 20, ScreenWidth - 20}, 0.18f, 20, 2, Colors::Yellow);
-    DrawLineEx( {ScreenPadding / 2, GroundLevel}, {ScreenWidth - ScreenPadding / 2, GroundLevel}, 3, Colors::Yellow);
-
-    if (m_gameOver) {
-        DrawTextEx(m_font, "GAME OVER", { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
-        const auto text = "PRESS SPACE TO PLAY AGAIN";
-        const auto [sx, sy] = MeasureTextEx(m_font, text, FontSize, FontSpacing);
-        DrawTextEx(m_font, "PRESS SPACE TO PLAY AGAIN",
-            { ScreenWidth / 2 - sx / 2, ScreenHeight / 2 - sy / 2 }, FontSize, FontSpacing, Colors::Yellow);
-    } else {
-        DrawTextEx(m_font, "LEVEL 01", { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
-    }
-
-    for (uint8_t i = 0; i < m_playerLives; i++) {
-        DrawTextureV(m_player->GetTexture(), {m_player->GetTexture().width + 50.0f * i, 745}, WHITE);
-    }
-
-    DrawTextEx(m_font, "SCORE", {50, 15}, FontSize, FontSpacing, Colors::Yellow);
-    const auto scoreText = std::format("{:05d}", m_score);
-    DrawTextEx(m_font, scoreText.c_str(), {50, 40}, FontSize, FontSpacing, Colors::Yellow);
-
-    DrawTextEx(m_font, "HIGH-SCORE", {570, 15}, FontSize, FontSpacing, Colors::Yellow);
-    const auto highScoreText = std::format("{:05d}", m_highScore);
-    DrawTextEx(m_font, highScoreText.c_str(), {660, 40}, FontSize, FontSpacing, Colors::Yellow);
-}
-
-void
 Game::AddExplosion(const Explosion &explosion) {
     m_explosions.push_back(explosion);
 }
@@ -463,7 +439,7 @@ Game::MoveAliens() const {
         maxAlienHeight = std::max(maxAlienHeight, static_cast<float>(alien->GetTexture().height));
     }
 
-    const auto aliensLeft = AliensLeft();
+    const auto aliensLeft = GetAliensLeft();
     static auto lastTrigger = aliensLeft;
     if (aliensLeft > 0 && (aliensLeft / lastTrigger) * 100 < 90) {
         Alien::StepUpSpeed();

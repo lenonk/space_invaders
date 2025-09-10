@@ -1,4 +1,4 @@
-#include "GameStateManager.h"
+#include "../../include/states/GameStateManager.h"
 #include "Game.h"
 
 namespace SpaceInvaders {

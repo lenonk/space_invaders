@@ -26,13 +26,13 @@ Explosion::Explosion(const Type type, const Vector2 &position) : m_type(type) {
             break;
     }
 
-    const auto texture = Game::GameResources->GetTexture(textureName);
+    const auto texture = Game::Resources->GetTexture(textureName);
     if (!texture.has_value()) {
         throw std::runtime_error(std::format("Failed to load texture: {}", textureName));
     }
     m_textures.push_back(texture.value());
 
-    const auto sound = Game::GameResources->GetSound(soundName);
+    const auto sound = Game::Resources->GetSound(soundName);
     if (!sound.has_value()) {
         throw std::runtime_error(std::format("Failed to load sound: {}", soundName));
     }

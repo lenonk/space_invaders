@@ -113,7 +113,7 @@ Barrier::Damage(const Vector2 pos, const int8_t direction) const {
 
 Rectangle
 Barrier::GetRect() const {
-    return {
+   return {
         m_position.x,
         m_position.y,
         static_cast<float>(BarrierWidth),

@@ -12,7 +12,7 @@
 
 namespace SpaceInvaders {
 MysteryShip::MysteryShip() {
-    const auto texture = Game::GameResources->GetTexture("mystery.png");
+    const auto texture = Game::Resources->GetTexture("mystery.png");
     if (!texture.has_value()) {
         throw std::runtime_error("Failed to load mystery ship texture");
     }
