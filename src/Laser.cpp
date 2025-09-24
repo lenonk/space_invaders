@@ -5,8 +5,8 @@
 #include <ranges>
 
 #include "Colors.h"
-#include "Explosion.h"
 #include "Game.h"
+#include "ParticleSystem.h"
 
 namespace SpaceInvaders {
 
@@ -37,9 +37,9 @@ Laser::Explode(const bool createExplosion) {
     SetActive(false);
     if (!createExplosion) { return; }
 
-    Explosion e(Explosion::Type::Laser, {0, 0});
-    e.SetPosition({GetPosition().x + GetTexture().width / 2 - e.GetTexture().width / 2, GetPosition().y});
-    Game::AddExplosion(e);
+    const Vector2 c { GetPosition().x + GetTexture().width / 2, GetPosition().y + GetTexture().height / 2 };
+
+    Game::ParticleManager->Emit(BurstType::Laser, c);
 }
 
 const Vector2 &
@@ -59,13 +59,13 @@ PlayerLaser::PlayerLaser() {
 
 void
 PlayerLaser::LoadResources() {
-    const auto texture = Game::Resources->GetTexture("player_laser_1.png");
+    const auto texture = Game::Resources->Get<Texture2D>("player_laser_1.png");
     if (!texture.has_value()) {
         throw std::runtime_error("Failed to load player laser texture");
     }
     m_textures.push_back(texture.value());
 
-    const auto sound = Game::Resources->GetSound("laser.ogg");
+    const auto sound = Game::Resources->Get<Sound>("laser.ogg");
     if (!sound.has_value()) {
         throw std::runtime_error("Failed to load player laser sound");
     }
@@ -83,14 +83,14 @@ AlienLaser::AlienLaser() {
 void
 AlienLaser::LoadResources() {
     for (const auto i : std::views::iota(1, 5)) {
-        auto texture = Game::Resources->GetTexture(std::format("alien_laser_{}.png", std::to_string(i)));
+        auto texture = Game::Resources->Get<Texture2D>(std::format("alien_laser_{}.png", std::to_string(i)));
         if (!texture.has_value()) {
             throw std::runtime_error(std::format("Failed to load alien laser texture: alien_laser_{}.png", i));
         }
         m_textures.push_back(texture.value());
     }
 
-    const auto sound = Game::Resources->GetSound("laser.ogg");
+    const auto sound = Game::Resources->Get<Sound>("laser.ogg");
     if (!sound.has_value()) {
         throw std::runtime_error("Failed to load alien laser sound");
     }

@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <iostream>
 
+#include "Logger.h"
+
 namespace SpaceInvaders {
 
 ResourceManager::~ResourceManager() {
@@ -14,6 +16,7 @@ ResourceManager::~ResourceManager() {
     for_each(m_sndCache | views::values, [](const auto &snd) { ::UnloadSound(snd); });
     for_each(m_musCache | views::values, [](const auto &mus) { ::UnloadMusicStream(mus); });
     for_each(m_fntCache | views::values, [](const auto &fnt) { ::UnloadFont(fnt); });
+    for_each(m_shaderCache | views::values, [](const auto &shd) { ::UnloadShader(shd); });
 }
 
 template<RaylibResource ResourceType>
@@ -37,9 +40,8 @@ ResourceManager::LoadResources(const std::string &path, const std::string &exten
 
         const auto resource = ResourceTraits<ResourceType>::Load(p.string().c_str());
         if (!ResourceTraits<ResourceType>::IsValid(resource)) {
-            std::println(std::cerr, "WARNING: Failed to load {}: {}",
-                        ResourceTraits<ResourceType>::TypeName(),
-                        p.filename().string());
+            Logger::Log(LogLevel::Warning, std::format("Failed to load {}: {}",
+                ResourceTraits<ResourceType>::TypeName(), p.filename().string()));
             continue;
         }
 
@@ -52,37 +54,24 @@ template void ResourceManager::LoadResources<Texture2D>(const std::string &path,
 template void ResourceManager::LoadResources<Sound>(const std::string &path, const std::string &extension, std::map<std::string, Sound> &cache);
 template void ResourceManager::LoadResources<Music>(const std::string &path, const std::string &extension, std::map<std::string, Music> &cache);
 template void ResourceManager::LoadResources<Font>(const std::string &path, const std::string &extension, std::map<std::string, Font> &cache);
+template void ResourceManager::LoadResources<Shader>(const std::string &path, const std::string &extension, std::map<std::string, Shader> &cache);
 
-std::optional<std::reference_wrapper<Texture2D>>
-ResourceManager::GetTexture(const std::string &path) {
-    if (m_texCache.contains(path)) {
-        return m_texCache[path];
+template<RaylibResource T>
+std::optional<std::reference_wrapper<T>>
+ResourceManager::Get(const std::string &path) {
+    auto &cache = CacheSelector<T>::Get(*this);
+    if (auto it = cache.find(path); it != cache.end()) {
+        return std::ref(it->second);
     }
+
     return std::nullopt;
 }
 
-std::optional<std::reference_wrapper<Sound>>
-ResourceManager::GetSound(const std::string &path) {
-    if (m_sndCache.contains(path)) {
-        return m_sndCache[path];
-    }
-    return std::nullopt;
-}
-
-std::optional<std::reference_wrapper<Music>>
-ResourceManager::GetMusic(const std::string &path) {
-    if (m_musCache.contains(path)) {
-        return m_musCache[path];
-    }
-    return std::nullopt;
-}
-
-std::optional<std::reference_wrapper<Font>>
-ResourceManager::GetFont(const std::string &path) {
-    if (m_fntCache.contains(path)) {
-        return m_fntCache[path];
-    }
-    return std::nullopt;
-}
+// Explicit template instantiations to ensure the template is compiled
+template std::optional<std::reference_wrapper<Texture2D>> ResourceManager::Get<Texture2D>(const std::string &);
+template std::optional<std::reference_wrapper<Sound>>     ResourceManager::Get<Sound>(const std::string &);
+template std::optional<std::reference_wrapper<Music>>     ResourceManager::Get<Music>(const std::string &);
+template std::optional<std::reference_wrapper<Font>>      ResourceManager::Get<Font>(const std::string &);
+template std::optional<std::reference_wrapper<Shader>>    ResourceManager::Get<Shader>(const std::string &);
 
 }

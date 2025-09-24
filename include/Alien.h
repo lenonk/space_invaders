@@ -1,11 +1,10 @@
 #pragma once
 
-#include <vector>
 #include <cstdint>
 
 #include <raylib.h>
 
-#include "Laser.h"
+#include "Entity.h"
 
 namespace SpaceInvaders {
 
@@ -40,6 +39,7 @@ private:
     uint8_t m_type          {0};
     float m_speed           {Speed};
     double m_lastMoveTime   {0.0f};
+    Shader m_glowShader     {};
 
     inline static double m_lastFireTime {0};
     inline static float m_moveTime = MoveTime;

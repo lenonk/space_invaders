@@ -7,16 +7,19 @@
 #include <iostream>
 #include <raylib.h>
 
-#include "Explosion.h"
 #include "Game.h"
+#include "ParticleSystem.h"
 
 namespace SpaceInvaders {
 MysteryShip::MysteryShip() {
-    const auto texture = Game::Resources->GetTexture("mystery.png");
-    if (!texture.has_value()) {
-        throw std::runtime_error("Failed to load mystery ship texture");
+    for (const auto i : std::views::iota(1, 2)) {
+        auto texture = Game::Resources->Get<Texture2D>(std::format("mystery_ani_{}.png", i));
+        if (!texture.has_value()) {
+            throw std::runtime_error(std::format("Failed to load spaceship texture: mystery_ani_{}.png", i));
+        }
+
+        m_textures.push_back(texture.value());
     }
-    m_textures.push_back(texture.value());
 
     m_lastSpawnTime = nextSpawnTime = GetRandomValue(5, SpawnInterval);
     Reset();
@@ -57,8 +60,9 @@ MysteryShip::Update() {
     if (!m_spawned) { return; }
 
     m_position.x += m_speed * GetFrameTime();
+    if ((int32_t)GetFrameTime() % GetFPS() == 0)
+        GetNextTexture();
 
-    // TODO: Constrain ship to frame
     if (m_position.x < -GetTexture().width - 1 || m_position.x > GetScreenWidth() + 1) {
         Reset();
     }
@@ -72,13 +76,9 @@ MysteryShip::Draw() const {
 
 void
 MysteryShip::Explode() {
-    Explosion e(Explosion::Type::Alien, Vector2{0, 0});
+    const Vector2 c { m_position.x + GetTexture().width  / 2, m_position.y + GetTexture().height / 2 };
 
-    const float xOff = m_position.x + GetTexture().width / 2 - e.GetTexture().width / 2;
-    const float yOff = m_position.y + GetTexture().height / 2 - e.GetTexture().height / 2;
-
-    e.SetPosition({xOff, yOff});
-    Game::AddExplosion(e);
+    Game::ParticleManager->Emit(BurstType::Mystery, c);
 
     Reset();
 }

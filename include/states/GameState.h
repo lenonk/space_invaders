@@ -21,6 +21,7 @@ public:
 
 protected:
     uint8_t m_textLarge     {64};
+    uint8_t m_textMenu      {42};
     uint8_t m_textMedium    {34};
     uint8_t m_textSmall     {24};
 };

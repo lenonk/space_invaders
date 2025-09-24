@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 #include <string_view>
 
@@ -5,6 +7,7 @@
 #include <vector>
 
 #include "CellRect.h"
+#include "Laser.h"
 
 namespace SpaceInvaders {
 class CellRect;

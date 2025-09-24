@@ -21,7 +21,6 @@ set(HDRS
         include/Barrier.h
         include/Alien.h
         include/MysteryShip.h
-        include/Explosion.h
         include/CellRect.h
         include/Entity.h
         include/ResourceManager.h
@@ -32,6 +31,7 @@ set(HDRS
         include/states/PausedState.h
         include/states/PlayingState.h
         include/states/QuitState.h
+        include/BloomRenderer.h
 )
 
 set(SRCS
@@ -42,7 +42,6 @@ set(SRCS
         src/Barrier.cpp
         src/Alien.cpp
         src/MysteryShip.cpp
-        src/Explosion.cpp
         src/Entity.cpp
         src/ResourceManager.cpp
         src/CellRect.cpp
@@ -53,6 +52,8 @@ set(SRCS
         src/states/PausedState.cpp
         src/states/PlayingState.cpp
         src/states/QuitState.cpp
+        src/ParticleSystem.cpp
+        src/BloomRenderer.cpp
 )
 
 add_executable(space_invaders ${HDRS} ${SRCS})

@@ -2,7 +2,6 @@
 
 #include <raylib.h>
 
-#include "Laser.h"
 #include "Alien.h"
 
 namespace SpaceInvaders {

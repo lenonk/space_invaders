@@ -7,6 +7,7 @@
 #include "Colors.h"
 #include "Logger.h"
 #include "MysteryShip.h"
+#include "ParticleSystem.h"
 #include "SpaceShip.h"
 #include "states/MenuState.h"
 
@@ -14,14 +15,15 @@ namespace SpaceInvaders {
 
 Game::Game() {
     InitWindow(ScreenWidth, ScreenHeight, "Raylib Space Invaders!");
+
     InitAudioDevice();
     SetExitKey(KEY_NULL);
 
     try {
         Resources->LoadTextures("Graphics");
         Resources->LoadSounds("Sounds/Effects");
-        Resources->LoadMusic("Sounds/Music");
         Resources->LoadFonts("Fonts");
+        Resources->LoadShaders("Graphics/Shaders");
     } catch (const std::runtime_error &e) {
         LogError(e.what());
         std::terminate();
@@ -29,6 +31,11 @@ Game::Game() {
 
     LoadHighScore();
     SetRandomSeed(static_cast<int32_t>(GetTime()));
+
+    m_bloomRenderer.Init(ScreenWidth, ScreenHeight);
+    m_bloomRenderer.SetThreshold(0.60f);
+    m_bloomRenderer.SetKnee(0.20f);
+    m_bloomRenderer.SetBlurRadius(4.0f);
 }
 
 Game::~Game() {
@@ -37,7 +44,6 @@ Game::~Game() {
     m_player.reset();
     m_mystery.reset();
     m_alienLasers.clear();
-    m_explosions.clear();
     for (auto &barrier : m_barriers) { barrier.reset(); }
     for (auto &alien : m_aliens) { alien.reset(); }
     CloseAudioDevice();
@@ -46,27 +52,31 @@ Game::~Game() {
 
 void
 Game::Run() {
-    const auto f = Resources->GetFont("monogram.ttf");
+    const auto f = Resources->Get<Font>("monogram.ttf");
     if (!f.has_value()) {
         LogError("Unable to load font: monogram.ttf");
         return;
     }
     m_font = f.value();
 
-    const auto music = Resources->GetMusic("music.ogg");
-    if (!music.has_value()) {
-        LogError("Unable to load music: music.ogg");
-        return;
-    }
-    m_music = music.value();
-
     StateManager->PushState(std::make_unique<MenuState>(), this);
 
     while (!WindowShouldClose() && !m_shouldExit && !StateManager->IsEmpty()) {
-        UpdateMusicStream(m_music);
-
         StateManager->HandleInput(this);
         StateManager->Update(this);
+
+        // m_bloomRenderer.ResizeIfNeeded(GetScreenWidth(), GetScreenHeight());
+        // m_bloomRenderer.BeginScene();
+        // ClearBackground(Colors::Gray);
+        // StateManager->Draw(this);
+        // m_bloomRenderer.EndScene();
+        //
+        // m_bloomRenderer.Apply();
+        //
+        // BeginDrawing();
+        // ClearBackground(Colors::Black);
+        // m_bloomRenderer.Composite(1.0f);
+        // EndDrawing();
 
         BeginDrawing();
         ClearBackground(Colors::Gray);
@@ -81,7 +91,6 @@ Game::Update() {
         // TODO:  Make this a state. Implement some sort of delay, and possibly aliens marching in animation
         m_level++;
         m_alienLasers.clear();
-        m_explosions.clear();
 
         for (auto &barrier: m_barriers) { barrier.reset(); }
         for (auto &alien: m_aliens) { alien.reset(); }
@@ -125,46 +134,68 @@ Game::Update() {
 }
 
 void
-Game::UpdateVisualEffects() const {
+Game::UpdateVisualEffects() {
     std::erase_if(m_alienLasers, [](auto& laser) { return !laser->GetActive(); });
-    std::erase_if(m_explosions, [](const auto &explosion) { return explosion.IsExpired(); });
+
+    ParticleManager->Update(GetFrameTime());
 }
 
 void
 Game::Draw() const {
+    if (const auto background = Resources->Get<Texture2D>("background.png"); background.has_value()) {
+        const Texture2D &bgTexture = background.value();
+
+        const Rectangle source = {0, 0, static_cast<float>(bgTexture.width), static_cast<float>(bgTexture.height)};
+        const Rectangle dest = {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())};
+
+        DrawTexturePro(bgTexture, source, dest, {0, 0}, 0.0f, WHITE);
+    }
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), ColorAlpha(Colors::Black, 0.50f));
+
     if (m_player) m_player->Draw();
     if (m_mystery) m_mystery->Draw();
 
     // Draw all the things...
     for (const auto &barrier: m_barriers) { barrier->Draw(); }
     for (const auto &alien: m_aliens) { alien->Draw(); }
-    for (const auto &explosion: m_explosions) { explosion.Draw(); }
     for (const auto &laser: m_alienLasers) { laser->Draw(); }
+
+    ParticleManager->Draw();
+
+    // // Draw Vignette last so that it fades everything
+    if (const auto vignette = Resources->Get<Texture2D>("vignette.png"); vignette.has_value()) {
+        const Texture2D &vTexture = vignette.value();
+
+        const Rectangle source = {0, 0, static_cast<float>(vTexture.width), static_cast<float>(vTexture.height)};
+        const Rectangle dest = {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())};
+
+        DrawTexturePro(vTexture, source, dest, {0, 0}, 0.0f, ColorAlpha(Colors::White, 0.8f));
+    }
 }
 
 void
 Game::DrawUI() {
-    // 10 is a magic number here, and I don't care.  It's just for positioning the frame around the view port
-    DrawRectangleRoundedLinesEx( {10, 10, ScreenHeight - 20, ScreenWidth - 20}, 0.18f, 20, 2, Colors::Yellow);
-    DrawLineEx( {ScreenPadding / 2, GroundLevel}, {ScreenWidth - ScreenPadding / 2, GroundLevel}, 3, Colors::Yellow);
+    DrawLineEx({ScreenPadding / 2, GetGroundLevel()},
+        {GetScreenWidth() - ScreenPadding / 2.0f, GetGroundLevel()}, 3, Colors::Yellow);
 
-    DrawTextEx(m_font, std::format("LEVEL {:02d}", m_level).c_str(), { 570, 740 }, FontSize, FontSpacing, Colors::Yellow);
+    DrawTextEx(m_font, std::format("LEVEL {:02d}", m_level).c_str(),
+        { GetScreenWidth() - 230.0f, GetScreenHeight() - 60.0f }, FontSize, FontSpacing, Colors::Yellow);
 
     for (uint8_t i = 0; i < m_playerLives; i++) {
-        DrawTextureV(m_player->GetTexture(), {m_player->GetTexture().width + 50.0f * i, 745}, WHITE);
+        DrawTextureV(m_player->GetTexture(), {m_player->GetTexture().width + 65.0f * i, GetScreenHeight() - 55.0f}, WHITE);
     }
 
     DrawTextEx(m_font, "SCORE", {50, 15}, FontSize, FontSpacing, Colors::Yellow);
     const auto scoreText = std::format("{:05d}", m_score);
     DrawTextEx(m_font, scoreText.c_str(), {50, 40}, FontSize, FontSpacing, Colors::Yellow);
 
-    DrawTextEx(m_font, "HIGH-SCORE", {570, 15}, FontSize, FontSpacing, Colors::Yellow);
+    DrawTextEx(m_font, "HIGH-SCORE", {GetScreenWidth() - 230.0f, 15}, FontSize, FontSpacing, Colors::Yellow);
     const auto highScoreText = std::format("{:05d}", m_highScore);
-    DrawTextEx(m_font, highScoreText.c_str(), {660, 40}, FontSize, FontSpacing, Colors::Yellow);
+    DrawTextEx(m_font, highScoreText.c_str(), {GetScreenWidth() - 158.0f, 40}, FontSize, FontSpacing, Colors::Yellow);
 }
 
 void
-Game::HandleInput() {
+Game::HandleInput() const {
     if (m_player) {
         if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
             m_player->MoveLeft();
@@ -184,7 +215,6 @@ Game::Reset() {
     m_score = 0;
     m_playerLives = PlayerLives;
     m_alienLasers.clear();
-    m_explosions.clear();
 
     for (auto &barrier: m_barriers) { barrier.reset(); }
     for (auto &alien: m_aliens) { alien.reset(); }
@@ -250,7 +280,7 @@ Game::CheckPlayerCollisions() {
         if (const auto entity = laser.CollidesWithAny(m_alienLasers); entity) {
             const auto aLaser = std::dynamic_pointer_cast<Laser>(entity);
             laser.Explode(true);
-            aLaser->Explode(false);
+            aLaser->Explode(true);
             IncrementScore(1000);
         }
 
@@ -338,12 +368,13 @@ Game::IncrementScore(const int16_t score) {
 
 void
 Game::CreateBarriers() {
-    constexpr int16_t barrierWidth = Barrier::BarrierWidth;
-    const float gap = (GetScreenWidth() - (4 * barrierWidth)) / 5;
+    constexpr float gap = Barrier::BarrierWidth * 1.5f;
+    constexpr float totalWidth = 4 * Barrier::BarrierWidth + gap * 3;
+    const auto xOff = (GetScreenWidth() - totalWidth) / 2.0;
 
     for (int8_t i = 0; i < 4; i++) {
-        const float offX = (i + 1) * gap + i * barrierWidth;
-        m_barriers[i] = std::make_unique<Barrier>(Vector2 { offX, GroundLevel - 100.0f });
+        const float xPos = xOff + i * Barrier::BarrierWidth + i * gap;
+        m_barriers[i] = std::make_unique<Barrier>(Vector2 { xPos, GetGroundLevel() - 100.0f });
     }
 }
 
@@ -377,13 +408,13 @@ Game::CreateAliens() {
     }
 
     // Magic numbers...yeah yeah...I know
-    constexpr float horizontalSpacing = 10.0f; // Gap between alien columns
-    constexpr float verticalSpacing = 10.0f;   // Gap between alien rows
+    constexpr float horizontalSpacing = 11.0f; // Gap between alien columns
+    constexpr float verticalSpacing = 15.0f;   // Gap between alien rows
 
     const float totalGridWidth = (AlienCols * maxAlienWidth) + ((AlienCols - 1) * horizontalSpacing);
 
     const float startX = (GetScreenWidth() - totalGridWidth) / 2.0f;
-    const float startY = 110.0f + maxAlienHeight * m_level - 1;
+    const float startY = std::min(110.0f + maxAlienHeight * m_level - 1, 325.0f);
 
     for (size_t i = 0; i < m_aliens.size(); i++) {
         const auto row = i / AlienCols;
@@ -400,6 +431,7 @@ Game::CreateAliens() {
     }
 
     Alien::ResetSpeed();
+    m_alienMoveTrigger = GetAliensLeft();
 }
 
 void
@@ -418,11 +450,6 @@ Game::LoadHighScore() {
     } else {
         println(std::cerr, "Unable to open highscore.txt for reading");
     }
-}
-
-void
-Game::AddExplosion(const Explosion &explosion) {
-    m_explosions.push_back(explosion);
 }
 
 void
@@ -456,18 +483,15 @@ Game::MoveAliens() const {
         maxAlienHeight = std::max(maxAlienHeight, static_cast<float>(alien->GetTexture().height));
     }
 
-    // Bug fix.  This only works once.  If you reset the aliens after destroying them all, they will never
-    // speed up again because the trigger is never hit.
     const auto aliensLeft = GetAliensLeft();
-    static auto lastTrigger = aliensLeft;
-    if (aliensLeft > 0 && (aliensLeft / lastTrigger) * 100 < 90) {
+    if (aliensLeft > 0 && (static_cast<float>(aliensLeft) / m_alienMoveTrigger) * 100.0f < 90.0f) {
         Alien::StepUpSpeed();
-        lastTrigger = aliensLeft;
+        m_alienMoveTrigger = aliensLeft;
     }
 
     if (!moveDown) return;
 
-    maxAlienHeight += 10.0f;   // Gap between alien rows
+    maxAlienHeight += 15.0f;   // Gap between alien rows
     for (const auto &alien : m_aliens) {
         alien->SetSpeed(-alien->GetSpeed());
         alien->Move({ alien->GetPosition().x + alien->GetSpeed(), alien->GetPosition().y + maxAlienHeight / 2 });

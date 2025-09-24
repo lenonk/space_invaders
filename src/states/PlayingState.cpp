@@ -9,11 +9,9 @@ namespace SpaceInvaders {
 
 void PlayingState::Enter(Game *game) {
     game->Reset();
-    game->PlayMusicStream();
 }
 
 void PlayingState::Exit(Game *game) {
-    game->PauseMusicStream();
 }
 
 void PlayingState::Update(Game *game) {
@@ -42,11 +40,9 @@ void PlayingState::HandleInput(Game *game) {
 }
 
 void PlayingState::Pause(Game *game) {
-    game->PauseMusicStream();
 }
 
 void PlayingState::Resume(Game *game) {
-    game->PlayMusicStream();
 }
 
 }

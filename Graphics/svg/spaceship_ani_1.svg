@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40" viewBox="0 0 80 40">
+    <rect width="80" height="40" fill="none"/>
+    <!-- base tread -->
+    <rect x="10" y="28" width="60" height="7" rx="3.5" fill="#E2BC35"/>
+    <!-- lower hull -->
+    <rect x="15" y="23" width="50" height="6" rx="3" fill="#F3D559"/>
+    <!-- upper hull plate -->
+    <rect x="20" y="18" width="40" height="6" rx="2.5" fill="#FFE98C"/>
+    <!-- barrel mount -->
+    <rect x="34" y="14" width="12" height="5" rx="1.5" fill="#FFDF73"/>
+    <!-- barrel -->
+    <rect x="39" y="9" width="2" height="7" fill="#FFF3BF"/>
+    <!-- armor seams -->
+    <rect x="20" y="21" width="40" height="1.4" fill="#C6A52E"/>
+    <rect x="16" y="26" width="48" height="1.4" fill="#C6A52E"/>
+    <!-- emissive trims -->
+    <rect x="20" y="24" width="40" height="1.7" fill="#5CFFE8" opacity="0.55"/>
+    <rect x="24" y="19.5" width="32" height="1.7" fill="#5CFFE8" opacity="0.40"/>
+    <!-- status lights -->
+    <circle cx="25" cy="26.8" r="1.1" fill="#5CFFE8" opacity="0.85"/>
+    <circle cx="55" cy="26.8" r="1.1" fill="#5CFFE8" opacity="0.85"/>
+</svg>

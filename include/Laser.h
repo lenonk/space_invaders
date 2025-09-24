@@ -28,7 +28,7 @@ protected:
 // Player laser
 class PlayerLaser final : public Laser {
 public:
-    static constexpr float Speed = -520.0f;
+    static constexpr float Speed = -800.0f;
 
     PlayerLaser();
     ~PlayerLaser() override = default;
@@ -40,7 +40,7 @@ protected:
 // Alien laser
 class AlienLaser final : public Laser {
 public:
-    static constexpr float Speed = 420.0f;
+    static constexpr float Speed = 380.0f;
     static constexpr float TextureSwapTime = 0.125f;
 
     AlienLaser();

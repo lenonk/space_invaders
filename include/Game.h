@@ -8,7 +8,8 @@
 #include "SpaceShip.h"
 #include "MysteryShip.h"
 #include "Barrier.h"
-#include "Explosion.h"
+#include "BloomRenderer.h"
+#include "ParticleSystem.h"
 #include "ResourceManager.h"
 #include "states/GameStateManager.h"
 
@@ -17,12 +18,12 @@ namespace SpaceInvaders {
 class Game final {
 public:
     static constexpr int32_t ScreenPadding = 50;
-    static constexpr int32_t ScreenWidth = 800;
-    static constexpr int32_t ScreenHeight = 800;
-    static constexpr float GroundLevel = ScreenHeight - ScreenPadding * 1.5;
+    static constexpr int32_t ScreenWidth = 1080;
+    static constexpr int32_t ScreenHeight = 720;
 
     static inline auto Resources    = std::make_unique<ResourceManager>();
     static inline auto StateManager = std::make_unique<GameStateManager>();
+    static inline auto ParticleManager = std::make_unique<ParticleSystem>();
 
     Game();
     ~Game();
@@ -32,11 +33,11 @@ public:
     void DrawUI();
     void MoveAliens() const;
     void Update();
-    void UpdateVisualEffects() const;
+    void UpdateVisualEffects() ;
     void Reset();
     void DecrementPlayerLives();
     void IncrementScore(int16_t score);
-    void HandleInput();
+    void HandleInput() const;
 
     void CheckCollisions();
     void CheckPlayerCollisions();
@@ -59,8 +60,8 @@ public:
     [[nodiscard]] auto GetHighScore() const { return m_highScore; }
     [[nodiscard]] auto &GetFont() const { return m_font; }
 
-    static void AddExplosion(const Explosion &explosion);
     static void AddAlienLaser(const std::shared_ptr<AlienLaser>& laser);
+    static float GetGroundLevel() { return GetScreenHeight() - ScreenPadding * 1.5; }
 
 private: // Constants
     static constexpr uint8_t AlienRows      = 5;
@@ -81,14 +82,17 @@ private:
     Font m_font             {};
     Music m_music           {};
 
+    BloomRenderer m_bloomRenderer {};
+
+    mutable float m_alienMoveTrigger  {0};
+
     std::unique_ptr<SpaceShip> m_player      {};
     std::unique_ptr<MysteryShip> m_mystery   {};
 
     std::array<std::shared_ptr<Barrier>, NumBarriers> m_barriers        {};
     std::array<std::shared_ptr<Alien>, AlienRows * AlienCols> m_aliens  {};
 
-    inline static std::vector<Explosion> m_explosions                       {};
-    inline static std::vector<std::shared_ptr<AlienLaser>> m_alienLasers    {};
+    inline static std::vector<std::shared_ptr<AlienLaser>> m_alienLasers {};
 };
 
 }

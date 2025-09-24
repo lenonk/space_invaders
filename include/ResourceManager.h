@@ -38,6 +38,13 @@ struct ResourceTraits<Font> {
     static constexpr const char *TypeName() { return "font"; }
 };
 
+template<>
+struct ResourceTraits<Shader> {
+    static Shader Load(const char *path) { return LoadShader(nullptr, path); }
+    static bool IsValid(const Shader &resource) { return IsShaderValid(resource); }
+    static constexpr const char *TypeName() { return "shader"; }
+};
+
 // Concept to ensure we only work with valid resource types
 template<typename T>
 concept RaylibResource = requires(const char *path, const T &resource) {
@@ -55,19 +62,27 @@ public:
     void LoadSounds(const std::string &path) { LoadResources<Sound>(path, ".ogg", m_sndCache); }
     void LoadFonts(const std::string &path) { LoadResources<Font>(path, ".ttf", m_fntCache); }
     void LoadMusic(const std::string &path) { LoadResources<Music>(path, ".ogg", m_musCache); };
+    void LoadShaders(const std::string &path) { LoadResources<Shader>(path, ".fs", m_shaderCache); };
 
-    [[nodiscard]] std::optional<std::reference_wrapper<Texture2D>> GetTexture(const std::string &path);
-    [[nodiscard]] std::optional<std::reference_wrapper<Sound>> GetSound(const std::string &path);
-    [[nodiscard]] std::optional<std::reference_wrapper<Music>> GetMusic(const std::string &path);
-    [[nodiscard]] std::optional<std::reference_wrapper<Font>> GetFont(const std::string &path);
+    template<RaylibResource T> [[nodiscard]] std::optional<std::reference_wrapper<T>> Get(const std::string &path);
 
 private:
     std::map<std::string, Texture2D> m_texCache {};
     std::map<std::string, Sound> m_sndCache     {};
     std::map<std::string, Music> m_musCache     {};
     std::map<std::string, Font> m_fntCache      {};
+    std::map<std::string, Shader> m_shaderCache {};
 
-    template<RaylibResource ResourceType> void LoadResources(const std::string &path, const std::string &extension, std::map<std::string, ResourceType> &cache);
+    template<RaylibResource T> void LoadResources(const std::string &path, const std::string &extension, std::map<std::string, T> &cache);
+
+    template<typename T>
+    struct CacheSelector;
+
+    template<> struct CacheSelector<Texture2D>  { static auto &Get(ResourceManager &rm) { return rm.m_texCache; } };
+    template<> struct CacheSelector<Sound>      { static auto &Get(ResourceManager &rm) { return rm.m_sndCache; } };
+    template<> struct CacheSelector<Music>      { static auto &Get(ResourceManager &rm) { return rm.m_musCache; } };
+    template<> struct CacheSelector<Font>       { static auto &Get(ResourceManager &rm) { return rm.m_fntCache; } };
+    template<> struct CacheSelector<Shader>     { static auto &Get(ResourceManager &rm) { return rm.m_shaderCache; } };
 };
 
 }
